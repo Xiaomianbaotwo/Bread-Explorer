@@ -1,0 +1,23 @@
+# 非洲
+# 分组: 北非
+Cairo|开罗
+Alexandria|亚历山大
+Casablanca|卡萨布兰卡
+Marrakesh|马拉喀什
+Tunis|突尼斯
+Algiers|阿尔及尔
+# 分组: 西非
+Lagos|拉各斯
+Abuja|阿布贾
+Accra|阿克拉
+Dakar|达喀尔
+# 分组: 东非
+Addis Ababa|亚的斯亚贝巴
+Nairobi|内罗毕
+Dar es Salaam|达累斯萨拉姆
+Kampala|坎帕拉
+# 分组: 南部非洲
+Johannesburg|约翰内斯堡
+Cape Town|开普敦
+Durban|德班
+Pretoria|比勒陀利亚

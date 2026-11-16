@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>花事书房 | 沉浸阅读</title>
+  <!-- 修改了这里的图标，使用标准 SVG 格式的樱花 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>">
+  
+  <link rel="stylesheet" href="css/01-vars.css">
+  <link rel="stylesheet" href="css/02-base.css">
+  <link rel="stylesheet" href="css/03-layout.css">
+  <link rel="stylesheet" href="css/04-modals.css">
+  <link rel="stylesheet" href="css/05-effects.css">
+</head>
+<body>
+  <div id="petalBg"></div>
+
+  <!-- 侧边栏 -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo"><span class="b">🌸</span> 花事书房</div>
+      <div class="subtitle">Flower Reading</div>
+      
+      <!-- 新增：侧边栏居中时钟区域 -->
+      <div class="sidebar-clock">
+        <div class="clock-time" id="clock">00:00:00</div>
+        <div class="clock-date" id="dateLine">加载中...</div>
+        <div class="clock-greet" id="greeting">...</div>
+      </div>
+    </div>
+    
+    <div class="menu-list" id="menuList">
+      <!-- JS 动态渲染目录 -->
+    </div>
+  </aside>
+
+  <!-- 主内容区 -->
+  <main class="main-content">
+    <div class="toolbar">
+      <div class="toolbar-left">
+        <button class="icon-btn" id="toggleSidebar" style="display:none; width:auto; padding:0 16px;">☰ 目录</button>
+      </div>
+      <div class="toolbar-right">
+        <button class="icon-btn" onclick="changeFontSize(-1)" title="缩小字号">A-</button>
+        <button class="icon-btn" onclick="changeFontSize(1)" title="放大字号">A+</button>
+        <button class="icon-btn" id="btnFontSelect" title="切换字体">🔤 字体</button>
+        <button class="icon-btn" id="btnThemeSelect" title="切换主题">🎨 主题</button>
+        <button class="icon-btn" id="btnTheme" title="切换日/夜模式">🌙</button>
+      </div>
+    </div>
+
+    <div class="reader-container">
+      <div class="article-card fade-in" id="articleCard">
+        <div class="article" id="articleContent"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 主题中心弹窗 -->
+  <div class="overlay" id="themeOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3>🎨 主题中心</h3>
+      <p style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:16px;">带 ✨ 的为 Plus 豪华版（支持动态烟花）</p>
+      <div id="themeGrid" class="theme-grid-layout"></div>
+      <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+        <button class="btn ghost" id="btnThemeClose" style="width:100%;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 字体中心弹窗 -->
+  <div class="overlay" id="fontOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3>🔤 字体中心</h3>
+      <div class="font-preview-container">
+        <div class="preview-label">预览：</div>
+        <div id="zhFontPreview" class="font-preview-box">江畔花事，春意盎然。春分雨，夏荷风，秋桂香，冬梅雪。</div>
+      </div>
+      <div class="font-selector-group">
+        <div class="font-row-header">
+          <span>阅读字体设置：</span>
+        </div>
+        <div id="zhFontList" class="font-list-box"></div>
+      </div>
+      <div class="modal-actions" style="justify-content: center; margin-top: 24px;">
+        <button class="btn ghost" id="btnFontClose" style="width:100%;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/articles/01-flower-events-by-the-river.js"></script>
+  <script src="js/articles/02-record-of-flower-events-at-west-lake-in-four-seasons.js"></script>
+  
+  <script src="js/01-utils.js"></script>
+  <script src="js/02-theme.js"></script>
+  <script src="js/03-render.js"></script>
+  <script src="js/04-fireworks.js"></script>
+  <script src="js/05-init.js"></script>
+  <!-- 【新增】读取面包篮登录态（只读本地 localStorage，不接 Supabase、不写云端） -->
+  <script src="js/06-session.js"></script>
+</body>
+</html>

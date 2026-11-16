@@ -1,0 +1,96 @@
+/* 侧边栏 */
+.sidebar {
+  width: 280px; 
+  background: var(--card); 
+  border-right: 1px solid var(--card-border);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  display: flex; flex-direction: column; 
+  z-index: 10; flex-shrink: 0; /* 防止被挤压 */
+  height: 100vh;
+}
+
+.sidebar-header { padding: 24px 24px 10px; text-align: center; }
+.sidebar-header .logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.sidebar-header .logo .b { font-size: 24px; display: inline-block; animation: bob 3s ease-in-out infinite; }
+.sidebar-header .subtitle { font-size: 12px; color: var(--ink-soft); margin-top: 4px; letter-spacing: 1px; }
+@keyframes bob { 50% { transform: translateY(-5px) rotate(-8deg); } }
+
+/* 侧边栏时钟区 */
+.sidebar-clock {
+  margin-top: 20px; padding: 16px 10px;
+  background: rgba(255, 255, 255, 0.4); border-radius: 16px; border: 1px solid var(--card-border);
+}
+body.dark .sidebar-clock { background: rgba(0, 0, 0, 0.2); }
+.clock-time { font-size: 26px; font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+.clock-date { font-size: 12px; color: var(--ink); margin-top: 4px; font-weight: 600; }
+.clock-greet { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+
+/* 目录列表 */
+.menu-list { flex: 1; overflow-y: auto; padding: 10px 16px 20px; }
+.menu-item {
+  padding: 14px 18px; border-radius: 14px; cursor: pointer; font-size: 15px;
+  margin-bottom: 8px; transition: all 0.2s; border: 1px solid transparent; 
+  color: var(--ink); font-weight: 600; display: flex; align-items: center; gap: 8px;
+}
+.menu-item::before { content: '📖'; font-size: 14px; opacity: 0.6; }
+.menu-item:hover { background: rgba(150, 150, 150, 0.1); transform: translateX(4px); }
+.menu-item.active {
+  background: var(--bg1); border-color: var(--accent); color: var(--accent);
+  box-shadow: var(--shadow);
+}
+
+/* 主内容区 */
+.main-content { flex: 1; display: flex; flex-direction: column; position: relative; z-index: 10; height: 100vh; overflow: hidden; }
+
+/* 顶部工具栏 */
+.toolbar {
+  height: 70px; padding: 0 30px; display: flex; justify-content: space-between; align-items: center;
+  background: var(--card); border-bottom: 1px solid var(--card-border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); flex-shrink: 0;
+}
+.toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 12px; }
+
+.icon-btn {
+  height: 38px; border-radius: 50px; border: 1px solid var(--card-border);
+  background: var(--bg1); cursor: pointer; font-size: 14px; color: var(--ink);
+  transition: .25s; display: flex; align-items: center; justify-content: center;
+  padding: 0 16px; font-weight: 600;
+}
+.icon-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--accent); color: var(--accent); }
+
+/* 阅读区域 */
+.reader-container { 
+  flex: 1; overflow-y: auto; padding: 40px; 
+  display: flex; justify-content: center; align-items: flex-start; 
+}
+
+/* 文章主卡片（重点：纸张效果） */
+.article-card {
+  max-width: 800px; width: 100%;
+  background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 24px; padding: 60px 80px;
+  box-shadow: var(--shadow); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+  margin-bottom: 50px;
+}
+
+/* 文章排版 */
+.article { line-height: 2.2; letter-spacing: 1.5px; font-size: 18px; }
+.article h1 { font-size: 36px; text-align: center; margin-bottom: 16px; font-weight: 800; }
+.article .author { text-align: center; color: var(--ink-soft); font-size: 14px; margin-bottom: 40px; font-weight: 600; letter-spacing: 2px; }
+.article h2 { 
+  font-size: 22px; margin: 40px 0 20px; font-weight: 700; color: var(--accent); 
+  display: flex; align-items: center; gap: 12px;
+}
+.article h2::before { content: ''; display: block; width: 4px; height: 22px; background: var(--accent); border-radius: 2px; }
+.article h2::after { content: ''; display: block; flex: 1; height: 1px; background: linear-gradient(90deg, var(--accent), transparent); opacity: 0.3; }
+.article p { text-indent: 2em; margin-bottom: 24px; text-align: justify; opacity: 0.9; }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; transform: translateX(-100%); box-shadow: none; }
+  .sidebar.show { transform: translateX(0); box-shadow: 10px 0 50px rgba(0,0,0,0.3); }
+  .reader-container { padding: 16px; }
+  .article-card { padding: 30px 20px; border-radius: 16px; }
+  .article h1 { font-size: 28px; }
+  .article { line-height: 2.0; }
+}

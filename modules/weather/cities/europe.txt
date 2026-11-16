@@ -1,0 +1,36 @@
+# 欧洲 (不含英法)
+# 分组: 德国
+Berlin|柏林
+Munich|慕尼黑
+Hamburg|汉堡
+Frankfurt|法兰克福
+Cologne|科隆
+# 分组: 意大利
+Rome|罗马
+Milan|米兰
+Naples|那不勒斯
+Turin|都灵
+Venice|威尼斯
+# 分组: 西班牙
+Madrid|马德里
+Barcelona|巴塞罗那
+Valencia|瓦伦西亚
+Seville|塞维利亚
+# 分组: 俄罗斯
+Moscow|莫斯科
+Saint Petersburg|圣彼得堡
+Novosibirsk|新西伯利亚
+Yekaterinburg|叶卡捷琳堡
+# 分组: 其他欧洲国家
+Amsterdam|阿姆斯特丹
+Brussels|布鲁塞尔
+Vienna|维也纳
+Zurich|苏黎世
+Stockholm|斯德哥尔摩
+Oslo|奥斯陆
+Copenhagen|哥本哈根
+Helsinki|赫尔辛基
+Athens|雅典
+Lisbon|里斯本
+Prague|布拉格
+Warsaw|华沙

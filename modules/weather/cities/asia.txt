@@ -1,0 +1,36 @@
+# 亚洲 (不含中日)
+# 分组: 韩国
+Seoul|首尔
+Busan|釜山
+Incheon|仁川
+Daegu|大邱
+Daejeon|大田
+Gwangju|光州
+# 分组: 东南亚
+Singapore|新加坡
+Kuala Lumpur|吉隆坡
+Bangkok|曼谷
+Chiang Mai|清迈
+Hanoi|河内
+Ho Chi Minh City|胡志明市
+Manila|马尼拉
+Jakarta|雅加达
+Bali|巴厘岛
+Phnom Penh|金边
+# 分组: 南亚
+New Delhi|新德里
+Mumbai|孟买
+Bangalore|班加罗尔
+Islamabad|伊斯兰堡
+Dhaka|达卡
+Colombo|科伦坡
+# 分组: 西亚
+Dubai|迪拜
+Abu Dhabi|阿布扎比
+Doha|多哈
+Riyadh|利雅得
+Tehran|德黑兰
+Istanbul|伊斯坦布尔
+# 分组: 中亚
+Almaty|阿拉木图
+Tashkent|塔什干

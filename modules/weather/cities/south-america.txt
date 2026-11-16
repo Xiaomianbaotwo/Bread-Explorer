@@ -1,0 +1,25 @@
+# 南美洲
+# 分组: 巴西
+Sao Paulo|圣保罗
+Rio de Janeiro|里约热内卢
+Brasilia|巴西利亚
+Salvador|萨尔瓦多
+# 分组: 阿根廷
+Buenos Aires|布宜诺斯艾利斯
+Cordoba|科尔多瓦
+Rosario|罗萨里奥
+# 分组: 智利
+Santiago|圣地亚哥
+Valparaiso|瓦尔帕莱索
+# 分组: 秘鲁
+Lima|利马
+Cusco|库斯科
+# 分组: 哥伦比亚
+Bogota|波哥大
+Medellin|麦德林
+Cali|卡利
+# 分组: 其他
+Caracas|加拉加斯
+Quito|基多
+La Paz|拉巴斯
+Montevideo|蒙得维的亚

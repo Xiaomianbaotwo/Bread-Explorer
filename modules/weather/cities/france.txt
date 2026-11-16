@@ -1,0 +1,12 @@
+# 法国
+# 分组: 主要城市
+Paris|巴黎
+Marseille|马赛
+Lyon|里昂
+Toulouse|图卢兹
+Nice|尼斯
+Nantes|南特
+Montpellier|蒙彼利埃
+Strasbourg|斯特拉斯堡
+Bordeaux|波尔多
+Lille|里尔

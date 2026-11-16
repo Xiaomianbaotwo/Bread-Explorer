@@ -1,0 +1,18 @@
+# 北美洲 (不含美国)
+# 分组: 加拿大
+Toronto|多伦多
+Vancouver|温哥华
+Montreal|蒙特利尔
+Calgary|卡尔加里
+Ottawa|渥太华
+# 分组: 墨西哥
+Mexico City|墨西哥城
+Guadalajara|瓜达拉哈拉
+Monterrey|蒙特雷
+Cancun|坎昆
+# 分组: 中美洲及加勒比
+Guatemala City|危地马拉城
+San Jose|圣何塞
+Panama City|巴拿马城
+Havana|哈瓦那
+San Juan|圣胡安

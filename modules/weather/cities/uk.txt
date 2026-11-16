@@ -1,0 +1,21 @@
+# 英国
+# 分组: 英格兰
+London|伦敦
+Birmingham|伯明翰
+Manchester|曼彻斯特
+Leeds|利兹
+Liverpool|利物浦
+Sheffield|谢菲尔德
+Bristol|布里斯托尔
+Newcastle|纽卡斯尔
+Oxford|牛津
+Cambridge|剑桥
+# 分组: 苏格兰
+Edinburgh|爱丁堡
+Glasgow|格拉斯哥
+Aberdeen|阿伯丁
+# 分组: 威尔士
+Cardiff|卡迪夫
+Swansea|斯旺西
+# 分组: 北爱尔兰
+Belfast|贝尔法斯特

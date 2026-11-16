@@ -1,0 +1,369 @@
+/* =========================================================
+   modules/vip-level/css/01-vip.css
+   VIP / SVIP 等级成长体系面板样式（星光值 point 模型）
+   【新增】整份文件都是本轮新增，只作用于 VIP 面板，不改动任何既有样式
+   ========================================================= */
+
+/* 面板主体：沿用项目既有的 .overlay / .modal 视觉语言 */
+.vip-panel {
+  width: min(560px, 94vw);
+  max-height: 84vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+/* 顶栏（标题 + 关闭） */
+.vip-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--card-border);
+  flex-shrink: 0;
+}
+
+.vip-panel-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.vip-panel-close {
+  background: transparent;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 2px 6px;
+}
+
+/* 可滚动内容区：头像 → 到期 → 等级 → 签到 → 任务 → 权益/记录 */
+.vip-panel-body {
+  padding: 16px 18px 22px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- 1. 头像 ---------- */
+.vip-user-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vip-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--card-border);
+  background: var(--card);
+  flex-shrink: 0;
+}
+
+.vip-avatar-ph {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.vip-user-meta {
+  min-width: 0;
+}
+
+.vip-user-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vip-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.vip-badge.vip { background: #d97706; }
+.vip-badge.svip { background: #8e44ad; }
+
+/* ---------- 2. 到期时间 + 续费 ---------- */
+.vip-expire-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.vip-expire-text { color: var(--ink); font-weight: 600; }
+
+.vip-renew-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.vip-renew-btn:hover { background: var(--accent); color: #fff; }
+
+/* ---------- 3. 等级 + 星光值进度条 ---------- */
+.vip-level-box {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.vip-level-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 9px;
+}
+
+.vip-level-num {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.5px;
+}
+
+.vip-level-num small {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  margin-left: 6px;
+}
+
+.vip-point-text {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+/* 进度条：轨道 + 填充 + 两端等级刻度 */
+.vip-bar-track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-border) 70%, transparent);
+  overflow: hidden;
+  border: 1px solid var(--card-border);
+}
+
+.vip-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f0b429, #e8933a);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vip-bar-fill.svip { background: linear-gradient(90deg, #b06ab3, #8e44ad); }
+
+.vip-bar-scale {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ink-soft);
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.vip-level-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* ---------- 4. 独立签到按钮 ---------- */
+.vip-checkin-btn {
+  width: 100%;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #ffb347, #e8933a);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: var(--shadow);
+}
+
+.vip-checkin-btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+.vip-checkin-btn:disabled {
+  background: var(--card-border);
+  color: var(--ink-soft);
+  cursor: default;
+  box-shadow: none;
+}
+
+/* ---------- 5. 任务区 ---------- */
+.vip-task-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.vip-task-section-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vip-task-reset-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.vip-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+}
+
+.vip-task-item.done { border-color: color-mix(in srgb, var(--accent) 55%, var(--card-border)); }
+
+.vip-task-main { flex: 1; min-width: 0; }
+
+.vip-task-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.vip-task-sub {
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.vip-task-reward {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #e8933a;
+  flex-shrink: 0;
+}
+
+.vip-task-btn {
+  flex-shrink: 0;
+  min-width: 62px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--ink-soft);
+  transition: 0.2s;
+}
+
+.vip-task-btn.can { border-color: var(--accent); color: var(--accent); }
+
+.vip-task-btn.claimed {
+  border-style: dashed;
+  cursor: default;
+  opacity: 0.75;
+}
+
+/* ---------- 6. 权益说明 / 奖励记录 ---------- */
+.vip-rights-box,
+.vip-log-box {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+
+.vip-rights-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+
+.vip-rights-list {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.85;
+}
+
+.vip-rights-list li.now { color: var(--accent); font-weight: 700; }
+
+.vip-log-empty {
+  font-size: 12px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.vip-log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink);
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--card-border);
+}
+
+.vip-log-item:last-child { border-bottom: none; }
+
+.vip-log-date {
+  font-size: 11px;
+  color: var(--ink-soft);
+  flex-shrink: 0;
+}
+
+/* 语言切换 / 窄屏兜底 */
+@media (max-width: 480px) {
+  .vip-panel-body { padding: 14px 13px 18px; }
+  .vip-task-item { gap: 8px; }
+  .vip-task-btn { min-width: 56px; padding: 6px 8px; }
+}

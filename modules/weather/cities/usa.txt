@@ -1,0 +1,17 @@
+# 美国
+# 分组: 热门城市
+New York|纽约
+Los Angeles|洛杉矶
+San Francisco|旧金山
+Chicago|芝加哥
+Seattle|西雅图
+Boston|波士顿
+Washington|华盛顿
+Las Vegas|拉斯维加斯
+Miami|迈阿密
+Houston|休斯顿
+Dallas|达拉斯
+Atlanta|亚特兰大
+Philadelphia|费城
+Phoenix|凤凰城
+San Diego|圣迭戈

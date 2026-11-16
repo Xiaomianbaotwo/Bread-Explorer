@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>国内版 · 和风天气 API 查询</title>
+  <link rel="stylesheet" href="../css/01-style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2338bdf8' d='M6.5 19a4.5 4.5 0 0 1-.42-8.98 6 6 0 0 1 11.62 1.62A3.75 3.75 0 0 1 17 19H6.5z'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="container">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.5 19a4.5 4.5 0 0 0 .42-8.98 6 6 0 0 0-11.62 1.62A3.75 3.75 0 0 0 7 19h10.5z"/>
+          </svg>
+        </div>
+        <div>
+          <h1>国内版 · 和风天气</h1>
+          <div class="sub">中国境内城市 · 城市名 → Location ID → 实况天气</div>
+        </div>
+      </div>
+      <a class="back-link" href="../index.html">返回首页</a>
+    </header>
+
+    <!-- 查询表单 -->
+    <section class="panel">
+      <h3>查询条件</h3>
+      <div class="form-row" style="grid-template-columns:1fr auto;">
+        <div class="field">
+          <label for="cityInput">城市名称（精确到市，例如：福州、北京、上海）</label>
+          <input type="text" id="cityInput" placeholder="输入中文城市名" autocomplete="off" />
+        </div>
+        <button class="btn" id="queryBtn">查询天气</button>
+      </div>
+      <div class="hint">
+        流程：先调用 <code>geoapi.qweather.com/v2/city/lookup</code> 把城市名转换为 Location ID，再调用 <code>devapi.qweather.com/v7/weather/now</code> 获取实况。<br/>
+        <strong>注意：请确保已在首页“全局配置”中填写并保存 API Key。</strong>
+      </div>
+      <div class="status" id="statusBar"></div>
+    </section>
+
+    <!-- 定位信息 -->
+    <section class="panel" id="metaPanel" style="display:none;">
+      <h3>定位结果</h3>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <div class="k">城市名</div>
+          <div class="v" id="metaName">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="k">Location ID</div>
+          <div class="v" id="metaId">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="k">省份 / 地区</div>
+          <div class="v" id="metaAdm">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="k">经纬度</div>
+          <div class="v" id="metaCoord">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JSON 结果 -->
+    <section class="panel">
+      <div class="result-head">
+        <h3>接口返回 JSON</h3>
+        <div class="action-row">
+          <button class="btn secondary" id="copyBtn">复制内容</button>
+          <button class="btn secondary" id="downloadBtn">下载 JSON</button>
+        </div>
+      </div>
+      <div class="json-wrap">
+        <div class="json-toolbar">
+          <span>weather-domestic-response.json</span>
+          <span id="resultSize">暂无数据</span>
+        </div>
+        <pre class="json-body" id="jsonBody"><div class="empty-tip">输入城市名并点击「查询天气」，返回的原始 JSON 将显示在这里。</div></pre>
+      </div>
+    </section>
+
+    <footer class="footer">
+      数据来源：和风天气开发服务（QWeather）。若浏览器提示跨域（CORS）限制，需通过自建后端代理转发请求。
+    </footer>
+  </div>
+
+  <script src="../js/04-i18n.js"></script>
+  <script src="../js/05-dev-gate.js"></script>
+  <script src="../js/01-common.js"></script>
+  <script src="../js/02-domestic.js"></script>
+</body>
+</html>

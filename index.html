@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="app.title">面包浏览器</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>%F0%9F%8D%9E</text></svg>">
+  
+  <link rel="stylesheet" href="css/01-vars.css">
+  <link rel="stylesheet" href="css/02-base.css">
+  <link rel="stylesheet" href="css/03-layout.css">
+  <link rel="stylesheet" href="css/04-modals.css">
+  <link rel="stylesheet" href="css/05-effects.css">
+  <link rel="stylesheet" href="css/06-fonts.css">
+  
+  <script src="./libs/marked.min.js"></script>
+  <link rel="stylesheet" href="./libs/katex.min.css">
+  <script defer src="./libs/katex.min.js"></script>
+  <script defer src="./libs/auto-render.min.js"></script>
+  <script src="./libs/chart.umd.js"></script>
+  
+  <!-- 【修改】好友样式从 css/07-friends.css 迁到 modules/friend/css/01-friends.css -->
+  <link rel="stylesheet" href="modules/friend/css/01-friends.css">
+  <link rel="stylesheet" href="modules/weather/css/01-weather.css">
+<!-- 【新增】VIP 等级面板样式 -->
+<link rel="stylesheet" href="modules/vip-level/css/01-vip.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./libs/Sortable.min.js"></script>
+</head>
+<body>
+  <!-- ================= 启动加载遮罩层 ================= -->
+  <div class="overlay show" id="loadingOverlay" style="z-index: 9999; background: var(--bg1);">
+    <div id="loadingContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding-bottom: 10vh; box-sizing: border-box;">
+      <div style="font-size: 50px; animation: bob 2s infinite; margin-bottom: 10px;">🍞</div>
+      <h2 style="margin: 0 0 15px 0; font-size: 26px; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <span data-i18n="app.name">面包浏览器</span>
+          <span id="loading-version-badge" style="font-size: 14px; font-weight: 600; color: var(--ink); background: var(--card-border); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--ink-soft); letter-spacing: 0; line-height: 1.2;">v1.5.1</span>
+      </h2>
+      
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; color: var(--accent); font-weight: 900; font-variant-numeric: tabular-nums;">
+          <div id="loadingPercent" style="font-size: 32px; line-height: 1; text-shadow: 0 2px 5px var(--glow-1); margin-bottom: 6px;">已加载 0%</div>
+          <div id="loadingTimeLeft" style="font-size: 18px; line-height: 1; opacity: 0.8;">剩余 18.0 秒 加载完成</div>
+      </div>
+
+      <div id="loadingText" style="font-size: 14px; color: var(--ink-soft); font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; height: 20px;" data-i18n="loading.wakingUp">正在唤醒系统...</div>
+
+      <div style="width: 320px; height: 6px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; margin-bottom: 6px;">
+        <div id="progressBar" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.1s linear; border-radius: 10px;"></div>
+      </div>
+
+      <div style="width: 320px; height: 12px; background: rgba(0,0,0,0.06); border-radius: 10px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px;">
+        <div id="globalProgressBar" style="width: 0%; height: 100%; background: var(--accent); opacity: 0.6; border-radius: 10px;"></div>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+          <div id="majorStageText" style="font-size: 12px; color: var(--ink); background: var(--card-border); padding: 4px 14px; border-radius: 20px; font-weight: bold; letter-spacing: 1px;">
+              当前阶段：准备启动
+          </div>
+          <div id="vipSpeedupHint" style="display: none; font-size: 12px; color: var(--accent); background: var(--card-border); border: 1px solid var(--accent); padding: 3px 13px; border-radius: 20px; font-weight: bold;" data-i18n="loading.vipSpeedup">
+              🚀 升级 VIP 或 SVIP 可大幅加快配置速度！
+          </div>
+      </div>
+      
+      <p style="font-size: 12px; color: var(--ink-soft); opacity: 0.7;" data-i18n="loading.preparing">请稍候，我们正在为您准备最纯粹的面包</p>
+
+      <!-- 【新增】加载页首帧语言兜底：脚本尚未执行时，先按已保存的语言写一次文案，
+           避免英文用户在第一帧看到「已加载 0% / 当前阶段：准备启动」这类中文。 -->
+      <script>
+        (function () {
+          var lang = (localStorage.getItem('bb-language') || 'zh');
+          var copy = {
+            zh: { percent: '已加载 0%', time: '剩余 18.0 秒 加载完成', stage: '当前阶段：准备启动' },
+            en: { percent: 'Loaded 0%', time: '18.0s remaining', stage: 'Stage: preparing to start' }
+          };
+          var c = copy[lang] || copy.zh;
+          var p = document.getElementById('loadingPercent');
+          var t = document.getElementById('loadingTimeLeft');
+          var s = document.getElementById('majorStageText');
+          if (p) p.textContent = c.percent;
+          if (t) t.textContent = c.time;
+          if (s) s.textContent = c.stage;
+        })();
+      </script>
+    </div>
+    
+    <div id="errorContent" style="display: none; text-align: center; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center;">
+      <!-- 错误内容由 JS 动态渲染 -->
+    </div>
+  </div>
+
+  <div id="breadBg"></div>
+
+  <!-- ================= 主界面头部 ================= -->
+  <header class="fade-in" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 30px; position: relative; z-index: 10;">
+    <div class="logo" style="display: flex; align-items: flex-start;">
+      <span class="b" style="font-size: 28px; display: inline-block; animation: bob 3s ease-in-out infinite; margin-top: 2px;">🍞</span>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: 1px; color: var(--ink);">
+                  <span data-i18n="app.name">面包浏览器</span>
+              </div>
+              <span id="readme-version-badge" style="font-size: 11px; background: var(--card-border); color: var(--ink); padding: 2px 6px; border-radius: 6px; font-weight: bold; border: 1px solid var(--ink-soft); line-height: 1;">
+                  v1.5.1
+              </span>
+          </div>
+          <span style="font-size: 12px; font-weight: 400; color: var(--ink-soft); margin-top: 4px; letter-spacing: 0.5px;">
+              Bread Browser
+          </span>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <button class="icon-btn" id="btnPoints" title="积分中心" data-i18n-title="header.points">🎁 <span id="pointsDisplay" style="font-size:14px; font-weight:bold; margin-left:4px;">0</span></button>
+      <button class="icon-btn" id="btnMail" title="邮件中心" data-i18n-title="header.mail" style="display:none;">📧 <span id="mailDot"></span></button>
+      <button class="icon-btn" id="btnHistory" title="搜索历史" data-i18n-title="header.history">🕒</button>
+      <button class="icon-btn" id="btnThemeSelect" title="切换主题" data-i18n-title="header.theme">🎨</button>
+      <button class="icon-btn" id="btnFontSelect" title="切换字体" data-i18n-title="header.font">🔤</button>
+      <button class="icon-btn" id="btnUser" title="用户中心" data-i18n-title="header.user">
+        <span class="icon-placeholder">👤</span>
+        <img class="mini-avatar" id="topAvatar" src="" alt="">
+        <span id="userNameDisplay" data-i18n="modals.login">登录</span>
+      </button>
+      <button class="icon-btn" id="btnTheme" title="切换日/夜模式" data-i18n-title="header.darkMode">🌙</button>
+      <button class="icon-btn" id="btnToolbox" title="更多工具" data-i18n-title="header.toolbox">🛠️</button>
+    </div>
+  </header>
+
+  <!-- 开发者控制面板（已接入 data-i18n，中英双语） -->
+  <div id="devPanel">
+    <h4 data-i18n="dev.panelTitle">🛠️ 开发者控制面板</h4>
+    <button class="btn ghost" id="btnDevAddDay" data-i18n="dev.btnAddDay">🛠️ 模拟增加注册时长</button>
+    <button class="btn ghost" id="btnDevSetDay" data-i18n="dev.btnSetDay">🛠️ 模拟设置注册时长</button>
+    <button class="btn ghost" id="btnDevSetPoints" data-i18n="dev.btnSetPoints" style="color:#e67e22; border-color:#e67e22;">🪙 设置用户积分</button>
+    <div class="dev-grid">
+      <button class="btn ghost" id="btnDevSetNone" data-i18n="dev.btnSetNone">设为普通用户</button>
+      <button class="btn ghost" id="btnDevSetVip" data-i18n="dev.btnSetVip" style="color:#d35400; border-color:#d35400;">设为 VIP</button>
+      <button class="btn ghost" id="btnDevSetSvip" data-i18n="dev.btnSetSvip" style="color:#8e44ad; border-color:#8e44ad;">设为 SVIP</button>
+      <button class="btn ghost" id="btnDevSetForever" data-i18n="dev.btnSetForever" style="color:#e74c3c; border-color:#e74c3c;">永久 SVIP</button>
+    </div>
+    <!-- 【新增】星光值 / 等级调试（本轮新增） -->
+    <div class="dev-grid">
+      <button class="btn ghost" id="btnDevSetStar" data-i18n="dev.btnSetStar" style="color:#8e44ad; border-color:#8e44ad;">⭐ 设置星光值</button>
+      <button class="btn ghost" id="btnDevAddStar" data-i18n="dev.btnAddStar" style="color:#9b59b6; border-color:#9b59b6;">✨ 增加星光值</button>
+    </div>
+    <button class="btn ghost" id="btnDevSetLevel" data-i18n="dev.btnSetLevel" style="color:#d35400; border-color:#d35400;">🎖️ 设置 (S)VIP 等级</button>
+    <button class="btn ghost" id="btnDevManageCodes" data-i18n="dev.btnManageCodes" style="color:#00bcd4; border-color:#00bcd4;">🎫 添加自定义兑换码</button>
+    <button class="btn ghost" id="btnDevGenCode" data-i18n="dev.btnGenCode" style="color:#27ae60; border-color:#27ae60;">🎲 生成兑换码</button>
+    <button class="btn ghost" id="btnDevStartRain" data-i18n="dev.btnStartRain" style="color:#e91e63; border-color:#e91e63;">🧧 立即触发红包雨</button>
+    <button class="btn ghost" id="btnDevAutoRain" data-i18n="dev.btnAutoRain" style="color:#9b59b6; border-color:#9b59b6;">🤖 自动领取红包(0.7秒)</button>
+    <button class="btn ghost" id="btnDevRunJs" data-i18n="dev.btnRunJs" style="color:#3498db; border-color:#3498db;">💻 执行自定义代码(前端)</button>
+    <button class="btn ghost" id="btnDevRunSql" data-i18n="dev.btnRunSql" style="color:#9b59b6; border-color:#9b59b6;">📡 执行自定义代码(后端)</button>
+    <button class="btn ghost" id="btnDevRunAll" data-i18n="dev.btnRunAll" style="color:#e67e22; border-color:#e67e22;">🚀 执行自定义代码(前端+后端)</button>
+    <button class="dev-btn-close" id="btnDevClose" data-i18n="dev.btnClose">关闭开发者模式</button>
+  </div>
+
+  <!-- ================= 主内容区 ================= -->
+  <main>
+    <div class="fade-in" style="animation-delay: .05s">
+      <h1 class="clock" id="clock"></h1>
+      <p class="date-line" id="dateLine"></p>
+    </div>
+    <p class="greeting fade-in" style="animation-delay: .15s" id="greeting"></p>
+    <p class="quote fade-in" style="animation-delay: .25s" id="quote"></p>
+
+    <div class="search-wrap fade-in" style="animation-delay: .35s" id="searchWrap">
+      <div class="search-box">
+        <div class="engine-btn" id="engineBtn" title="切换搜索引擎" data-i18n-title="ui.engineSwitch"><span id="engineIcon">☁️</span></div>
+        <input id="searchInput" type="text" autocomplete="off" placeholder="搜索，或直接输入网址…" data-i18n-placeholder="ui.searchPlaceholderBare">
+        <button class="go" id="btnGo" data-i18n="search.btn">搜索</button>
+      </div>
+      <div class="engine-menu" id="engineMenu"></div>
+    </div>
+
+    <p class="sites-title fade-in" style="animation-delay: .45s" data-i18n="home.sitesTitle">🧺 我的面包篮（可拖拽排序，悬停删除）</p>
+    <div class="sites" id="sitesGrid"></div>
+  </main>
+
+  <!-- ================= 各种弹窗 ================= -->
+  <div class="overlay" id="siteOverlay">
+    <div class="modal">
+      <h3 id="siteModalTitle" data-i18n="modals.addSite">🧺 添加站点</h3>
+      <label><span data-i18n="modals.siteName">名称</span><input type="text" id="fName" maxlength="24" placeholder="例如：Google" data-i18n-placeholder="modals.siteNamePh"></label>
+      <label><span data-i18n="modals.siteUrl">网址</span><input type="text" id="fUrl" placeholder="例如：https://www.google.com" data-i18n-placeholder="modals.siteUrlPh"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnSiteCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnSiteSave" data-i18n="modals.save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="loginOverlay">
+    <div class="modal">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin" data-i18n="modals.login">登录</div>
+        <div class="auth-tab" id="tabRegister" data-i18n="modals.register">注册</div>
+      </div>
+      <div id="quickLoginArea" style="display: none; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--card-border);">
+        <label style="margin-top: 0; color: var(--accent);" data-i18n="modals.historyQuick">历史账号快捷登录：</label>
+        <div id="quickLoginList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+      </div>
+      <div id="normalInputArea">
+        <label id="authLabel">账户名称<input type="text" id="authName" placeholder="请输入用户名" data-i18n-placeholder="ui.namePlaceholder"></label>
+        <label id="pwdLabel"><span data-i18n="modals.pwdOrKey">密码 / 面包 Key</span><input type="password" id="authPwd" placeholder="请输入密码"></label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnAuthCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnAuthSubmit" data-i18n="modals.login">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="userOverlay">
+    <div class="modal" style="width: min(400px, 100%);">
+      <div class="user-profile">
+        <div class="avatar-wrap" id="avatarWrap" title="点击修改头像" data-i18n-title="ui.avatarTip">
+          <img id="userAvatar" src="" style="display:none;">
+          <div id="userAvatarPlaceholder" class="avatar-placeholder">🍞</div>
+          <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+        </div>
+        <div class="profile-name" id="profileName">用户名</div>
+        <div class="join-days" id="profileDays" data-i18n="ui.daysComputing">陪伴天数计算中...</div>
+        <div class="vip-status" id="vipStatusText"></div>
+        <div class="vip-countdown" id="vipCountdown"></div>
+        <!-- 【新增】个性签名展示（个人主页） -->
+        <div id="profileBio" style="font-size:12.5px; color:var(--ink-soft); line-height:1.6; margin-top:8px; word-break:break-word;"></div>
+        <!-- 【新增】个性签名编辑区：最多 80 字，保存后计入 VIP「修改个人资料」任务 -->
+        <div style="width:100%; margin-top:12px; box-sizing:border-box;">
+          <div style="font-size:12.5px; font-weight:700; color:var(--ink); margin-bottom:6px;" data-i18n="userCenter.bioLabel">✍️ 个性签名</div>
+          <textarea id="bioInput" maxlength="80" rows="2" data-i18n-placeholder="userCenter.bioPlaceholder"
+            style="width:100%; box-sizing:border-box; resize:vertical; padding:8px 10px; border-radius:10px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:12.5px; line-height:1.6; outline:none;"></textarea>
+          <div style="display:flex; align-items:center; gap:10px; margin-top:6px;">
+            <span id="bioCount" style="font-size:11.5px; color:var(--ink-soft); flex:1;">0 / 80</span>
+            <button class="btn primary" id="btnSaveBio" style="padding:6px 14px; font-size:12.5px;" data-i18n="userCenter.bioSave">保存签名</button>
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:rgba(0,0,0,0.04); border-radius:12px;">
+          <span style="font-size:14px; font-weight:600; color:var(--ink);" data-i18n="userCenter.screenShake">拆红包屏幕抖动</span>
+          <input type="checkbox" id="screenShakeToggle" class="bb-switch">
+        </div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:rgba(0,0,0,0.04); border-radius:12px;">
+          <span style="font-size:14px; font-weight:600; color:var(--ink);" data-i18n="userCenter.showBeta">🧪 显示测试功能 (Beta)</span>
+          <input type="checkbox" id="showBetaToggle" class="bb-switch">
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:rgba(150,150,150,0.1); border-radius:12px; margin-top: 10px;">
+          <span style="font-size:14px; font-weight:600; color:var(--ink);" data-i18n="userCenter.clock12h">🕒 使用 12 小时制 (AM/PM)</span>
+          <input type="checkbox" id="clock12hToggle" style="width:20px; height:20px; cursor:pointer;">
+        </div>
+
+        <div id="btnChangeWeatherCity" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:rgba(0,0,0,0.04); border-radius:12px; cursor:pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.08)'" onmouseout="this.style.background='rgba(0,0,0,0.04)'">
+          <span style="font-size:14px; font-weight:600; color:var(--ink);" data-i18n="userCenter.weatherSettings">📍 天气地区设置</span>
+          <span style="font-size:13px; font-weight:bold; color:var(--accent);" data-i18n="userCenter.clickToModify">点击修改 ›</span>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:rgba(0,0,0,0.04); border-radius:12px;">
+          <span style="font-size:14px; font-weight:600; color:var(--ink); white-space:nowrap; flex-shrink:0;" data-i18n="userCenter.languageSettings">🌐 语言</span>
+          <select id="langSelect" style="padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:13px; outline:none; cursor:pointer;">
+            <option value="zh" data-i18n="userCenter.langZh">中文</option>
+            <option value="en" data-i18n="userCenter.langEn">English</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="border-top: 1px dashed var(--ink-soft); opacity: 0.4; margin: 18px 0;"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="display: flex; gap: 10px;">
+          <button class="btn ghost" id="btnRedeemCode" style="flex: 1; padding: 12px; background: rgba(0,0,0,0.04); border: none; border-radius: 12px; font-weight: 600; font-size: 14px; color: var(--ink);" data-i18n="userCenter.redeemBtn">🎫 兑换特权</button>
+          <button class="btn ghost" id="btnChangePwd" style="flex: 1; padding: 12px; background: rgba(0,0,0,0.04); border: none; border-radius: 12px; font-weight: 600; font-size: 14px; color: var(--ink);" data-i18n="userCenter.pwdBtn">🔐 修改密码</button>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+          <button class="btn ghost" id="btnDeleteAccount" style="flex: 1; padding: 12px; background: rgba(231,76,60,0.08); color: #e74c3c; border: none; border-radius: 12px; font-weight: 600; font-size: 14px;" data-i18n="userCenter.deleteBtn">注销账号</button>
+          <button class="btn primary" id="btnLogout" style="flex: 1; padding: 12px; border-radius: 12px; font-weight: 600; font-size: 14px; border: none;" data-i18n="userCenter.logoutBtn">退出登录</button>
+        </div>
+        
+        <button class="btn ghost" id="btnUserClose" style="width: 100%; padding: 10px; border: none; background: transparent; color: var(--ink-soft); font-size: 13px; margin-top: 4px;" data-i18n="userCenter.closeBtn">关闭面板</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="themeOverlay">
+    <div class="modal" style="width:min(600px, 100%);">
+      <h3 data-i18n="modals.themeTitle">🎨 主题中心</h3>
+      <p style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:16px;" data-i18n="modals.themeDesc">带 ✨ 的为 Plus 豪华版（支持烟花）</p>
+      <div id="themeGrid" class="theme-grid-layout"></div> 
+      
+      <div id="fwConfigArea" style="display:none; margin-top: 16px; background: rgba(0,0,0,0.04); padding: 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--accent);" data-i18n="modals.fwSettings">⚙️ 当前主题烟花参数设置 (0.1 - 5.0 倍)</h4>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwSpeed">🚀 升空速度：</span>
+          <input type="number" id="fwSpeedInput" min="0.1" max="5" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwFreq">🎆 发射频率：</span>
+          <input type="number" id="fwFreqInput" min="0.1" max="5" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top: 4px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwThemeColor">🎨 适配主题颜色：</span>
+          <input type="checkbox" id="fwThemeColorToggle" class="bb-switch">
+        </div>
+      </div>
+      
+      <div class="modal-actions" style="justify-content: center; margin-top: 24px; width: 100%;">
+        <button class="btn primary" id="btnThemeClose" style="width: 100%; padding: 12px; font-size: 15px; border-radius: 12px;" data-i18n="modals.close">关闭面板</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="fontOverlay">
+    <div class="modal" style="width:min(650px, 100%);">
+      <h3 data-i18n="modals.fontTitle">🔤 字体中心</h3>
+      <div class="font-preview-container">
+        <div class="preview-label" data-i18n="modals.fontEnPreview">英文/数字预览：</div>
+        <div id="enFontPreview" class="font-preview-box">Aa Bb Cc 123</div>
+        <div class="preview-label" style="margin-top:12px;" data-i18n="modals.fontZhPreview">中文/符号预览：</div>
+        <div id="zhFontPreview" class="font-preview-box" style="height:120px; overflow-y:auto; font-size:14px; line-height:1.6; text-align:left;"></div>
+      </div>
+      <div class="font-selector-group" style="margin-top:16px;">
+        <div class="font-row-header">
+          <span data-i18n="modals.fontEn">英/数字：</span>
+          <button class="btn ghost" id="btnUploadEnFont" style="padding: 4px 8px; font-size:12px;" data-i18n="modals.uploadFont">📁 上传字体(支持多选)</button>
+          <input type="file" id="enFontUpload" accept=".ttf,.otf,.woff,.woff2" multiple style="display: none;">
+        </div>
+        <input type="text" id="enFontSearch" placeholder="搜索英文字体..." class="font-search-input" data-i18n-placeholder="modals.searchEn">
+        <div id="enFontList" class="font-list-box"></div>
+        <div class="font-row-header" style="margin-top:16px;">
+          <span data-i18n="modals.fontZh">中/符号：</span>
+          <button class="btn ghost" id="btnUploadZhFont" style="padding: 4px 8px; font-size:12px;" data-i18n="modals.uploadFont">📁 上传字体(支持多选)</button>
+          <input type="file" id="zhFontUpload" accept=".ttf,.otf,.woff,.woff2" multiple style="display: none;">
+        </div>
+        <input type="text" id="zhFontSearch" placeholder="搜索中文字体..." class="font-search-input" data-i18n-placeholder="modals.searchZh">
+        <div id="zhFontList" class="font-list-box"></div>
+      </div>
+      <div class="modal-actions" style="justify-content: center; margin-top: 24px;">
+        <button class="btn ghost" id="btnFontClose" style="width:100%;" data-i18n="modals.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="redeemOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.redeemTitle">🎫 兑换特权</h3>
+      <label><span data-i18n="ui.redeemInputLabel">输入兑换码</span><input type="text" id="redeemInput" placeholder="例如：SVIP-STRING-1Y-A1B2C3D" data-i18n-placeholder="modals.redeemPlaceholder"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnRedeemCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnRedeemSubmit" data-i18n="modals.redeemNow">立即兑换</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pwdOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.pwdTitle">🔐 修改密码</h3>
+      <label><span data-i18n="modals.oldPwd">原密码 / 面包 Key</span><input type="password" id="oldPwd" placeholder="原密码或 Key" data-i18n-placeholder="ui.oldPwdPlaceholder"></label>
+      <label><span data-i18n="modals.newPwd">新密码</span><input type="password" id="newPwd" placeholder="设置新密码" data-i18n-placeholder="ui.newPwdPlaceholder"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnPwdCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnPwdSave" data-i18n="modals.confirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="mailOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.mailTitle">📬 我的邮件</h3>
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <button class="btn ghost" id="btnClaimAll" style="font-size:12px; padding:6px 10px; color:var(--accent); border-color:var(--accent);" data-i18n="modals.claimAll">📥 一键领取所有附件</button>
+        <button class="btn ghost" id="btnDeleteAllMails" style="font-size:12px; padding:6px 10px; color:#e74c3c; border-color:#e74c3c;" data-i18n="modals.deleteAllMails">🗑 删除全部邮件</button>
+      </div>
+      <div id="mailList" style="max-height:350px; overflow-y:auto; margin-bottom:20px; border-top:1px solid var(--card-border);"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnMailClose" style="border:none;" data-i18n="modals.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="registerSuccessOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.regSuccess">🎉 注册成功</h3>
+      <p style="font-size: 14px; margin-bottom: 12px; text-align: center;" data-i18n="modals.regKeyDesc">你的专属面包 Key（用于找回密码）：</p>
+      <div id="regSuccessKey" style="background: var(--card); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; text-align: center; word-break: break-all; color: var(--accent); user-select: all; border: 1px dashed var(--accent); margin-bottom: 12px; cursor: pointer;" title="点击复制" data-i18n-title="ui.copyTip"></div>
+      <p style="font-size: 12px; color: var(--ink-soft); text-align: center; margin-bottom: 20px;" data-i18n="modals.regKeyTip">点击上方文本可快速复制，请务必截图保存！</p>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn primary" id="btnRegSuccessClose" style="width: 100%;" data-i18n="modals.saved">我已保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="deleteConfirmOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.deleteAccount">⚠️ 注销账号</h3>
+      <p style="text-align: center; margin-bottom: 20px; color: var(--ink);">
+        <span data-i18n="modals.deleteDesc">确定要注销账号吗？</span><br>
+        <strong style="color: #e74c3c;" data-i18n="modals.deleteWarn">所有数据将永久清空且无法恢复！</strong>
+      </p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnDeleteCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn danger" id="btnDeleteConfirm" data-i18n="modals.confirmDelete">确认注销</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="historyOverlay">
+    <div class="modal">
+      <h3 data-i18n="modals.historyTitle">🕒 搜索历史</h3>
+      <div id="historyList" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; text-align: left; padding-right: 4px;"></div>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnClearHistory" style="color:#e74c3c; border-color:#e74c3c;" data-i18n="modals.clearAll">清空全部</button>
+        <button class="btn ghost" id="btnHistoryClose" data-i18n="modals.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pointsOverlay">
+    <div class="modal" style="width:min(460px, 100%);">
+      <h3 data-i18n="modals.pointsTitle">🎁 积分中心</h3>
+      <div class="points-header"><span data-i18n="modals.currentPoints">当前可用积分：</span><span id="shopPoints">0</span> 🪙</div>
+      <div style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:12px;" data-i18n="modals.pointsDesc">每日通过邮件发送，月底清零。VIP享9折，SVIP享7折。</div>
+      <div style="max-height: 320px; overflow-y: auto; padding-right:4px;">
+        <h4 style="margin:8px 0; font-size:14px; color:var(--accent);" data-i18n="modals.buyVip">👑 兑换特权 (可买多份)</h4>
+        <div class="shop-grid" id="shopGridVip"></div>
+        <div class="shop-grid" id="shopGridSvip"></div>
+        <h4 style="margin:16px 0 8px; font-size:14px; color:var(--accent);" data-i18n="modals.buyTheme">🎨 主题永久解锁</h4>
+        <div class="theme-shop-grid" id="themeShopGrid"></div>
+      </div>
+      <div class="modal-actions" style="justify-content: center; margin-top:16px;">
+        <button class="btn ghost" id="btnPointsClose" style="width: 100%;" data-i18n="modals.close">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="inputOverlay">
+    <div class="modal">
+      <h3 id="inputTitle" data-i18n="modals.inputTitle">输入</h3>
+      <p id="inputDesc" style="font-size:13px; color:var(--ink-soft); margin-bottom:12px; text-align:left;"></p>
+      <input type="text" id="inputValue" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnInputCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnInputConfirm" data-i18n="modals.globalConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="confirmOverlay">
+    <div class="modal">
+      <h3 id="confirmTitle" data-i18n="modals.globalConfirm">确认</h3>
+      <div id="confirmDesc" style="text-align: center; margin-bottom: 20px; color: var(--ink); line-height: 1.6;"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnGlobalConfirmCancel" data-i18n="modals.globalCancel">取消</button>
+        <button class="btn danger" id="btnGlobalConfirmOk" data-i18n="modals.globalConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="codeManageOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3 data-i18n="modals.codeTitle">🎫 添加自定义兑换码</h3>
+      <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px;" data-i18n="modals.codeDesc">输入完整兑换码，保存后会直接写入云端码表，用户可立即兑换。每行一个。</p>
+      <textarea id="codeManageInput" rows="6" placeholder="每行一个，例如：&#10;VIP-STRING-1Q-A1B2C3D&#10;SVIP-STRING-LIFE-HIJKLMN&#10;POINT-STRING-500-X1Y2Z3A" data-i18n-placeholder="ui.codePlaceholder"></textarea>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnCodeManageCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnCodeManageSave" data-i18n="modals.saveAppend">保存并追加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="runCodeOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3 id="runCodeTitle" data-i18n="modals.runCodeTitle">💻 执行自定义代码(前端)</h3>
+      <div id="jsCodeArea">
+        <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px;" data-i18n="modals.runJsDesc">输入 JavaScript 代码（前端）：</p>
+        <textarea id="runJsInput" rows="5" placeholder="例如：document.body.style.background = '#333';" data-i18n-placeholder="ui.runJsPlaceholder"></textarea>
+      </div>
+      <div id="sqlCodeArea" style="display:none; margin-top:12px;">
+        <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px;" data-i18n="modals.runSqlDesc">输入 SQL 语句（后端）：</p>
+        <textarea id="runSqlInput" rows="5" placeholder="例如：UPDATE bread_assets SET points = 99999 WHERE username = '小面包吖two';" data-i18n-placeholder="ui.runSqlPlaceholder"></textarea>
+      </div>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnRunCodeCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn primary" id="btnRunCodeExecute" data-i18n="modals.runBtn">运行代码</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="redPacketRain">
+    <div id="rpHeader">
+      <div data-i18n="ui.rpHeader">🧧 抢金币啦！ 🧧</div>
+      <div id="rpTimer">10.0s</div>
+      <div id="rpScore">已收集：0 金币</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- ================= 脚本加载区 ================= -->
+  <script src="js/01-core.js" defer></script>
+  <script src="js/02-config.js" defer></script>
+  <!-- 【新增】内测功能开关（好友系统 / 查询天气工具）：必须早于 15-tools-hub 与 modules/friend 加载 -->
+  <script src="js/16-feature-flags.js" defer></script>
+  <script src="js/03-ui.js" defer></script>
+  <script src="js/04-auth.js" defer></script>
+  <script src="js/05-font-theme.js" defer></script>
+  <script src="js/06-sites.js" defer></script>
+  <script src="js/07-mail.js" defer></script>
+  <script src="js/08-points.js" defer></script>
+  <script src="js/09-redpacket.js" defer></script>
+  <script src="js/10-dev.js" defer></script>
+  <script src="js/12-fireworks.js" defer></script>
+  <script src="js/11-init.js" defer></script>
+  <script src="js/13-updater.js" defer></script>
+  <!-- 【修复】i18next + 词典必须排在 14-loading.js 之前：
+       否则加载页（尤其游客/未登录分支）会在 _loadT 还是占位桩时就写文案，
+       屏幕上会出现 loading.loadedPercent 这类 key 串，或者 [object Object]。 -->
+  <script src="./libs/i18next.min.js"></script>
+  <!-- 【修改】原 js/16-i18n.js 按模块拆到 modules/i18n/（无 CSS，JS 直接放目录下）：
+       01 内核 → 02~05 是「模块文件」，每个文件里同时含中英两份词条 → 06 交给 i18next 并绑定语言选择器。
+       顺序不能乱：内核必须第一，06-i18n-init 必须最后，且整体仍排在 14-loading.js 之前。 -->
+  <script src="modules/i18n/01-i18n-core.js" defer></script>
+  <script src="modules/i18n/02-i18n-ui.js" defer></script>
+  <script src="modules/i18n/03-i18n-social.js" defer></script>
+  <script src="modules/i18n/04-i18n-account.js" defer></script>
+  <script src="modules/i18n/05-i18n-system.js" defer></script>
+  <!-- 【新增】VIP 等级体系词条（星光值）：中英成对放在同一文件，必须在 06-i18n-init 之前 -->
+  <script src="modules/i18n/07-i18n-vip.js" defer></script>
+  <script src="modules/i18n/06-i18n-init.js" defer></script>
+  <script src="js/14-loading.js" defer></script>
+  <script src="js/15-tools-hub.js" defer></script>
+
+  <!-- 【新增】VIP 等级成长体系（1~100 级 / 星光值 point 模型）
+       顺序：01 计算内核 → 02 任务体系 → 04 等级奖励 → 03 面板 UI（UI 依赖前面三者，必须最后） -->
+  <script src="modules/vip-level/js/01-vip-core.js" defer></script>
+  <script src="modules/vip-level/js/02-vip-task.js" defer></script>
+  <script src="modules/vip-level/js/04-vip-mail-reward.js" defer></script>
+  <script src="modules/vip-level/js/03-vip-ui.js" defer></script>
+
+  
+  <!-- 【修改】好友模块从 js/friend-system/ 迁到根目录 modules/friend/js/，并按职责拆细：
+       01 入口状态 / 02 好友列表 / 03 聊天逻辑 / 04 气泡渲染 / 05 送礼 -->
+  <script src="modules/friend/js/01-friends-core.js" defer></script>
+  <script src="modules/friend/js/02-friends-list.js" defer></script>
+  <script src="modules/friend/js/03-friends-chat.js" defer></script>
+  <script src="modules/friend/js/04-friends-chat-render.js" defer></script>
+  <script src="modules/friend/js/05-friends-gift.js" defer></script>
+
+  <script src="modules/weather/js/01-config.js" defer></script>
+  <script src="modules/weather/js/02-weather-core.js" defer></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch(`./README.md?t=${Date.now()}`);
+        if (res.ok) {
+          const text = await res.text();
+          const match = text.match(/版本：[v]?([a-zA-Z0-9.\-]+)/);
+          if (match && match[1]) {
+            const fullVersion = match[1]; 
+            const badge = document.getElementById('readme-version-badge');
+            if (badge) badge.textContent = `v${fullVersion}`;
+            const loadingBadge = document.getElementById('loading-version-badge');
+            if (loadingBadge) loadingBadge.textContent = `v${fullVersion}`;
+          }
+        }
+      } catch (error) {
+        console.log("无法读取 README.md，使用默认版本号");
+      }
+    });
+  </script>
+
+<div class="overlay" id="toolboxOverlay">
+  <div class="modal" style="width: min(680px, 95vw);">
+    <h3 data-i18n="modals.toolboxTitle">🛠️ 更多工具</h3>
+    <p style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:16px;" data-i18n="modals.toolboxDesc">面包浏览器的扩展百宝箱</p>
+    <div id="toolboxGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; max-height: 400px; overflow-y: auto; padding: 4px;"></div>
+    <div class="modal-actions" style="justify-content: center; margin-top: 24px;">
+      <button class="btn ghost" id="btnToolboxClose" style="width:100%;" data-i18n="modals.close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="toolIframeOverlay" style="z-index: 99999; padding: 0;">
+  <div style="width: 90vw; height: 90vh; max-width: 1100px; position: relative; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: rise 0.3s;">
+    <button id="btnToolIframeClose" style="position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">✕</button>
+    <iframe id="toolIframe" src="" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
+  </div>
+</div>
+</body>
+</html>

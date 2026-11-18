@@ -13,6 +13,52 @@ function _pts(cost) {
   return (typeof window.t === 'function') ? window.t('modals.pts', { cost }) : `🪙 ${cost} 积分`;
 }
 
+/* 【新增】20261118：把购买 RPC 的真实失败原因转成能看懂的提示。
+   以前 executeBatchPurchase 只要没成功就统一说“批量购买失败，请检查网络”，
+   把 PGRST203（函数重载冲突）、未登录、资产缺失等真实原因全吞掉了。 */
+function themePurchaseErrorText(data, error) {
+  const isEn = (typeof window.getLang === 'function' && window.getLang() === 'en');
+  const pick = (zh, en) => isEn ? en : zh;
+
+  if (error) {
+    const code = error.code || '';
+    const msg = error.message || error.details || '';
+    if (code === 'PGRST203' || /Could not choose the best candidate function/i.test(msg)) {
+      return pick(
+        '服务端接口存在重复版本（PGRST203），请先执行 20261118-fix-rpc-overload.sql',
+        'The server has overloaded RPC versions (PGRST203). Run 20261118-fix-rpc-overload.sql first.'
+      );
+    }
+    if (/Failed to fetch|NetworkError|network request|fetch failed/i.test(msg)) {
+      return pick('网络请求失败，请检查网络后重试', 'Network request failed. Check your connection and retry.');
+    }
+    if (/permission denied/i.test(msg)) {
+      return pick('没有权限调用购买接口，请确认登录状态', 'No permission to call the purchase API. Please sign in again.');
+    }
+    return msg || pick('未知错误', 'Unknown error');
+  }
+
+  if (data && data.ok === false) {
+    const reason = data.msg || '';
+    const map = {
+      'not authenticated': pick('登录状态已失效，请重新登录', 'Your session has expired. Please sign in again.'),
+      'assets not found': pick('云端资产记录缺失，请刷新或重新登录', 'Cloud asset record is missing. Refresh or sign in again.'),
+      'insufficient points': pick('积分不足', 'Not enough points.'),
+      'required theme not owned': pick('需要先拥有前置主题', 'You need to own the prerequisite theme first.'),
+      'theme price not configured': pick('该主题价格未配置', 'This theme has no configured price.'),
+      'bread-level only': pick('该主题只能通过面包等级解锁', 'This theme can only be unlocked by Bread Level.'),
+      'bad theme': pick('主题参数无效', 'Invalid theme parameter.'),
+      'already svip': pick('你已经是 SVIP，不能降级购买 VIP', 'You are already SVIP and cannot downgrade to VIP.'),
+      'bad days': pick('购买天数无效', 'Invalid purchase duration.'),
+      'bad level': pick('会员等级无效', 'Invalid membership level.'),
+      'bad price': pick('价格参数无效', 'Invalid price parameter.')
+    };
+    return map[reason] || reason || pick('购买失败', 'Purchase failed.');
+  }
+
+  return '';
+}
+
 /* 【新增】主题购买前置校验（唯一权威规则，渲染和下单都走这里）：
    1. 新春大吉原版不走积分，只能靠 SVIP Lv10 礼包邮件领取；
    2. 买 xxx-plus 必须先拥有原版 xxx（原版免费 / 会员档位自带 / 已购买都算拥有）；
@@ -20,43 +66,85 @@ function _pts(cost) {
    会员档位不再无脑视为「全部拥有」：Plus / Max 一律要自己买或拿奖励。 */
 function themePurchaseBlock(key, u, status) {
   const t = THEMES[key];
-  if (!t) return { ok: false, msg: '' };
+  if (!t) return { ok: false, kind: 'invalid', msg: '' };
+  /* 【修改】20261118：真正的拥有记录优先。
+     只要 unlockedThemes 里已经有这个主题，就直接放行，
+     不再先走 VIP/SVIP 或前置主题判断，避免“明明已拥有却提示缺前置”。
+     注意这里只看真实解锁记录，不把“会员期内可用”的档位主题当成已购买。 */
+  if (typeof themeOwnedKeys === 'function' && themeOwnedKeys(u).indexOf(key) >= 0) {
+    return { ok: true, kind: 'owned', msg: '' };
+  }
+  /* 【新增】20261119：面包等级专属主题（蜂蜜工坊）不参与积分购买，
+     只能靠面包等级解锁；未达标时点一下只提示门槛。 */
+  if (t.breadOnly) {
+    const need = Number(t.breadLevel) || 0;
+    const lv = (typeof window.UserLevel !== 'undefined' && window.UserLevel.level) ? Number(window.UserLevel.level) : 1;
+    const msg = (typeof window.getLang === 'function' && window.getLang() === 'en')
+      ? `This theme unlocks at Bread Level Lv${need} (current Lv${lv}).`
+      : `这个主题需要面包等级 Lv${need} 解锁（当前 Lv${lv}）。`;
+    return { ok: false, kind: 'bread', msg: msg };
+  }
   if (t.isSpring && !key.endsWith('-plus') && !key.endsWith('-max')) {
-    return { ok: false, msg: _loadT('modals.springOnlyCode') };
+    return { ok: false, kind: 'code', msg: _loadT('modals.springOnlyCode') };
+  }
+  /* 【新增】20261119：季节主题暂时只走兑换码，不参与积分购买。 */
+  if (t.redeemOnly || t.season) {
+    return { ok: false, kind: 'code', msg: _loadT('modals.seasonRedeemOnly') };
   }
   /* 【新增】会员档位专属的基础主题不能单独用积分买：
      樱花漫舞 / 黄金时代 / 绿野仙踪 → VIP；钻石星辰 / 深海幽蓝 / 暗夜黑金 / 赛博朋克 → SVIP */
   if (TIER_ONLY_THEMES.indexOf(key) >= 0) {
-    return { ok: false, msg: _loadT('modals.tierOnly', { name: themeLabel(t) }) };
+    const svipOnly = ['diamond', 'ocean', 'blackgold', 'cyber'].indexOf(key) >= 0;
+    const msgKey = svipOnly ? 'modals.tierSvipOnly' : 'modals.tierVipOnly';
+    return {
+      ok: false,
+      kind: 'tier',
+      msg: _loadT(msgKey, { name: themeLabel(t) })
+    };
   }
-  const baseKey = key.replace('-plus', '').replace('-max', '');
+  const baseKey = key.replace('-plus', '').replace('-max', '').replace('-ultimate', '');
   if (key.endsWith('-plus')) {
     const baseConf = THEMES[baseKey];
     const owns = (typeof themeIsOwned === 'function')
       ? themeIsOwned(baseKey, u, status)
-      : (u.unlockedThemes.includes(baseKey));
+      : (typeof themeOwnedKeys === 'function' ? themeOwnedKeys(u).includes(baseKey) : false);
     if (!owns) {
-      return { ok: false, msg: _loadT('modals.needBase', { name: themeLabel(t), base: baseConf ? themeLabel(baseConf) : baseKey }) };
+      let msg = _loadT('modals.needBase', { name: themeLabel(t), base: baseConf ? themeLabel(baseConf) : baseKey });
+      /* 【新增】20261118：如果是 Plus 缺基础版，且基础版本身是会员专属，
+         把“当前会员档位不够”说清楚，避免看起来像无理由拦截。 */
+      if (TIER_ONLY_THEMES.indexOf(baseKey) >= 0) {
+        const needTier = ['diamond', 'ocean', 'blackgold', 'cyber'].indexOf(baseKey) >= 0 ? 'SVIP' : 'VIP';
+        const nowType = (status && status.type) ? status.type : 'none';
+        const nowTier = nowType === 'svip' ? 'SVIP' : (nowType === 'vip' ? 'VIP' : '普通用户');
+        const isEn = (typeof window.getLang === 'function' && window.getLang() === 'en');
+        msg += isEn
+          ? ` (${baseConf ? themeLabel(baseConf) : baseKey} is ${needTier}-only; current: ${nowTier})`
+          : `（${baseConf ? themeLabel(baseConf) : baseKey} 是 ${needTier} 专属，当前是${nowTier}）`;
+      }
+      return { ok: false, kind: 'base', msg };
     }
   }
   if (key.endsWith('-max')) {
     const plusKey = `${baseKey}-plus`;
     const owns = (typeof themeIsOwned === 'function')
       ? themeIsOwned(plusKey, u, status)
-      : (u.unlockedThemes.includes(plusKey));
+      : (typeof themeOwnedKeys === 'function' ? themeOwnedKeys(u).includes(plusKey) : false);
     if (!owns) {
-      return { ok: false, msg: _loadT('modals.needPlus', { name: themeLabel(t), plus: THEMES[plusKey] ? themeLabel(THEMES[plusKey]) : plusKey }) };
+      return { ok: false, kind: 'plus', msg: _loadT('modals.needPlus', { name: themeLabel(t), plus: THEMES[plusKey] ? themeLabel(THEMES[plusKey]) : plusKey }) };
     }
   }
-  return { ok: true, msg: '' };
+  return { ok: true, kind: 'buy', msg: '' };
 }
 
 function openPointsShop() {
+  /* 【修改】20261119：先开窗再渲染，避免第二次打开时渲染抛错导致点了没反应 */
+  const _ovFirst = $('#pointsOverlay');
+  const _wasOpen = !!(_ovFirst && _ovFirst.classList.contains('show'));
+  if (_ovFirst) openOverlay(_ovFirst);
   /* 【新增】VIP 任务记账：打开主题商店（积分中心内含主题商店）。
      只在面板本来没打开时记一次，购买后重复渲染不会重复计数；track 内部对非会员自动忽略 */
   try {
-    const _ov = $('#pointsOverlay');
-    if (window.VipTasks && _ov && !_ov.classList.contains('show')) window.VipTasks.track('themeShop');
+    if (window.VipTasks && !_wasOpen) window.VipTasks.track('themeShop');
   } catch (e) { /* 记账失败不影响打开 */ }
   /* 【修复】原来第一行是 `if (!currentUser) return showToast(...)`，
      游客模式 / 本地模式 / 本地用户记录缺失（users[currentUser] 为空）时，
@@ -102,7 +190,6 @@ function openPointsShop() {
 
   selectedThemes = [];
   renderThemeShop(u, status);
-  openOverlay($('#pointsOverlay'));
 }
 
 function renderThemeShop(u, status) {
@@ -150,6 +237,8 @@ function renderThemeShop(u, status) {
     const isOwned = (typeof themeIsOwned === 'function')
       ? themeIsOwned(key, u, status)
       : ((status.type === 'svip') || u.unlockedThemes.includes(key));
+    /* 【新增】20261119：面包等级专属主题没解锁前不在积分商店里露出（避免出现买不了的卡片） */
+    if (t.breadOnly && !isOwned) return;
     const block = isOwned ? { ok: true, msg: '' } : themePurchaseBlock(key, u, status);
     const cloudThemeCost = (window.cloudSettings && window.cloudSettings.theme_prices) ? window.cloudSettings.theme_prices[key] : null;
     const finalCost = cloudThemeCost !== undefined && cloudThemeCost !== null ? cloudThemeCost : t.cost;
@@ -172,7 +261,16 @@ function renderThemeShop(u, status) {
     
     let priceHtml = '';
     if (isOwned) priceHtml = _t('owned', '✅ 已拥有');
-    else if (!block.ok) priceHtml = `🔒 ${finalCost !== undefined && finalCost !== null ? _pts(finalCost) + ' · ' : ''}${_t('lockedTag', '🔒 需先拥有前置主题')}`;
+    else if (!block.ok) {
+      /* 【修改】20261118：VIP/SVIP 专属、面包等级、兑换码专属主题不再显示价格，
+         直接显示获取方式；只有真正可以积分购买、但缺前置的 Plus/Max 才显示价格。 */
+      const noPrice = (block.kind === 'tier' || block.kind === 'bread' || block.kind === 'code' || block.kind === 'invalid');
+      if (noPrice) {
+        priceHtml = `🔒 ${block.msg}`;
+      } else {
+        priceHtml = `🔒 ${finalCost !== undefined && finalCost !== null ? _pts(finalCost) + ' · ' : ''}${block.msg || _t('lockedTag', '需先拥有前置主题')}`;
+      }
+    }
     else if (isSelected) priceHtml = _t('selected', '☑️ 已选中');
     else priceHtml = _pts(finalCost);
 
@@ -274,13 +372,28 @@ async function executeBatchPurchase(keys, u, status) {
   showToast(`${_t('processing', '正在处理支付...')}`, '⏳');
   
   let successCount = 0;
+  /* 【新增】20261118：记录失败数量和第一条真实原因，避免统一误报成网络问题 */
+  let failedCount = 0;
+  let lastErrorText = '';
   for (let item of itemsToBuy) {
-    const { error } = await sb.rpc('purchase_theme', { p_theme: item.key, p_cost: item.cost });
-    if (!error) successCount++;
+    /* 【修改】20261118 P2：服务端加固后返回 jsonb { ok:false } 也要判失败；
+       以前只看 error，服务端拒绝扣款但返回 ok:false 时会被当成购买成功。 */
+    const { data, error } = await sb.rpc('purchase_theme', { p_theme: item.key, p_cost: item.cost });
+    if (!error && data !== false && !(data && data.ok === false)) {
+      successCount++;
+    } else {
+      failedCount++;
+      lastErrorText = themePurchaseErrorText(data, error) || lastErrorText;
+    }
   }
 
   if (successCount > 0) {
-    showToast(_t('allBuySuccess', `成功购买并解锁 ${successCount} 个主题！`).replace('{{count}}', successCount), '🎉');
+    const successText = _t('allBuySuccess', `成功购买并解锁 ${successCount} 个主题！`).replace('{{count}}', successCount);
+    if (failedCount > 0) {
+      showToast(`${successText}；${failedCount} 个失败${lastErrorText ? '：' + lastErrorText : ''}`, '⚠️');
+    } else {
+      showToast(successText, '🎉');
+    }
     selectedThemes = [];
     if (typeof syncFromCloud === 'function') await syncFromCloud();
     loadUserData();
@@ -291,7 +404,12 @@ async function executeBatchPurchase(keys, u, status) {
     $('#shopPoints').textContent = upU.points;
     renderThemeShop(upU, upStatus);
   } else {
-    showToast(_t('batchFailed', '批量购买失败，请检查网络'), '❌');
+    /* 【修改】20261118：单买不再复用“批量”措辞；并显示 RPC 真实失败原因 */
+    const isBatch = itemsToBuy.length > 1;
+    const baseText = isBatch
+      ? _t('themeBatchFailed', '批量购买失败')
+      : _t('themeBuyFail', '购买失败');
+    showToast(`${baseText}${lastErrorText ? '：' + lastErrorText : ''}`, '❌');
   }
 }
 
@@ -322,7 +440,12 @@ function buyVip(level, days, singleCost, label) {
       p_level: level, p_days: totalDays, p_cost: totalCost 
     });
 
-    if (error || data === false) return showToast(_t('buyFail', '购买失败，积分不足或网络错误'), '❌');
+    /* 【修改】20261118 P2：服务端加固后返回 jsonb { ok:false } 也要判失败。
+       【修改】20261118：会员购买同样显示真实失败原因，不再统一说“网络错误”。 */
+    if (error || data === false || (data && data.ok === false)) {
+      const reason = themePurchaseErrorText(data, error);
+      return showToast(`${_t('themeBuyFail', '购买失败')}${reason ? '：' + reason : ''}`, '❌');
+    }
 
     const typeStr = level === 1 ? 'VIP' : 'SVIP';
     showToast(_t('buyVipSuccess', `成功购买 ${count} 份 ${typeStr} ${label}`).replace('{{count}}', count).replace('{{type}}', typeStr).replace('{{label}}', label), '🎉');

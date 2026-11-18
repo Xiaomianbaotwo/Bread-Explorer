@@ -123,7 +123,10 @@ function openDevRunner(mode) {
     const jsArea = $('#jsCodeArea');
     const sqlArea = $('#sqlCodeArea');
     
-    if (!title || !jsArea || !sqlArea) return alert(_loadT('dev.missingRunner', '页面缺少双端输入弹窗结构，请更新 index.html！'));
+    if (!title || !jsArea || !sqlArea) {
+        showToast(_loadT('dev.missingRunner', '页面缺少双端输入弹窗结构，请更新 index.html！'), '⚠️');
+        return;
+    }
     
     if (mode === 'js') title.textContent = _loadT('dev.runJsTitle', '💻 执行自定义代码(前端)');
     else if (mode === 'sql') title.textContent = _loadT('dev.runSqlTitle', '📡 执行自定义代码(后端)');
@@ -289,12 +292,26 @@ $('#btnDevSetStar').onclick = () => {
       const n = parseInt(input, 10);
       if (isNaN(n) || n < 0) return showToast(_loadT('dev.invalidNumber', '请输入有效数字'), '❌');
       const type = window.VIPCore.memberTypeOf(rec.u);
+      const oldLvStar = Number(rec.u.vipLevel) || 1;
       rec.u.vipPoint = n;
-      window.VIPCore.normalize(rec.u, type);
+      /* 【修正】20261118：原来直接 normalize，跨过奖励等级也不会发邮件。
+         改成和正常攒星光同一条路：normalize 拿到跨级列表后交给 VipReward 发信。 */
+      const crossedStar = window.VIPCore.normalize(rec.u, type);
+      const mailLenBefore = (rec.u.emails || []).length;
+      if (Array.isArray(crossedStar) && crossedStar.length
+          && typeof window.VipReward !== 'undefined'
+          && typeof window.VipReward.onLevelCrossed === 'function') {
+        try { window.VipReward.onLevelCrossed(rec.u, crossedStar, type); } catch (e) { console.warn('[dev] 发信失败', e); }
+      }
       window.VIPCore.persist(rec.u);
       devVipRefreshAfterChange();
+      if (typeof window.renderMails === 'function') { try { window.renderMails(); } catch (e) { /* 忽略 */ } }
       const s = window.VIPCore.snapshot(rec.u);
       showToast(_loadT('dev.starSet', { level: s.level, point: s.point, cap: s.cap }, `星光值已设为 Lv${s.level} 的 ${s.point}/${s.cap}`), '⭐');
+      const mailed = Math.max(0, (rec.u.emails || []).length - mailLenBefore);
+      if (mailed > 0) {
+        showToast(_loadT('dev.rewardMailSent', { n: mailed }, `已补发 ${mailed} 封等级奖励邮件`), '📬');
+      }
     }
   );
 };
@@ -337,13 +354,117 @@ $('#btnDevSetLevel').onclick = () => {
       const lv = parseInt(input, 10);
       const max = window.VIPCore.maxLevel();
       if (isNaN(lv) || lv < 1 || lv > max) return showToast(_loadT('dev.invalidNumber', '请输入有效数字'), '❌');
+      const oldLv = Number(rec.u.vipLevel) || 1;   /* 【新增】记录旧等级，用于判断是否“升级” */
       rec.u.vipLevel = lv;
       rec.u.vipPoint = 0;
       rec.u.vipAppliedType = window.VIPCore.memberTypeOf(rec.u);
       window.VIPCore.persist(rec.u);
+      /* 【修改】20261117：开发者一旦把等级调高（哪怕只调 1 级），就把当前等级以下所有配置等级的礼包
+         强制重发一遍。原来按「跨过的等级」计算，遇到等级原本就越界（例如 180）或旧值不准时会算空，
+         结果一封都不发——这就是「升上去了却没收到邮件」的原因。 */
+      try {
+        const mt = window.VIPCore.memberTypeOf(rec.u);
+        if (lv > oldLv && typeof window.VipReward.forceRegrant === 'function') {
+          const mailed = window.VipReward.forceRegrant(null, mt);
+          if (typeof mailed === 'number' && mailed > 0) {
+            showToast(_loadT('dev.rewardMailSent', { n: mailed }, `已补发 ${mailed} 封等级奖励邮件`), '📬');
+          }
+        }
+      } catch (e) {
+        console.warn('[dev] 等级奖励补发失败', e);
+      }
       devVipRefreshAfterChange();
       const s = window.VIPCore.snapshot(rec.u);
       showToast(_loadT('dev.levelSet', { level: s.level, point: s.point, cap: s.cap }, `已设为 Lv${s.level}（星光值 ${s.point}/${s.cap}）`), '🎖️');
+    }
+  );
+};
+
+/* =========================================================
+   【新增】20261119：面包等级调试（烘焙度 / 面包等级）
+   - 与 VIP 星光值完全独立：烘焙度只走 bread_assets.user_bake / user_level
+   - 设置类操作（把数值调低）走服务端 RPC user_set_state，
+     因为 user_add_bake 只接受正数；增加类走 UserLevel.addBake / user_add_bake
+   ========================================================= */
+function devBreadView() {
+  if (typeof window.UserLevel === 'undefined' || typeof window.UserLevel.getView !== 'function') return null;
+  const v = window.UserLevel.getView();
+  if (!v) { showToast(_loadT('common.loginRequired', '请先登录'), '⚠️'); return null; }
+  return v;
+}
+
+/* 统一刷新：本地用户库 + 面包等级面板 */
+function devBreadRefreshAfterChange() {
+  try { if (typeof loadUserData === 'function') loadUserData(); } catch (e) { /* 忽略 */ }
+  try { if (window.UserLevel && window.UserLevel.refreshTasks) window.UserLevel.refreshTasks(); } catch (e) { /* 忽略 */ }
+}
+
+/* 设置 / 增加烘焙度、设置面包等级：都调这个服务端函数，返回最新状态 */
+function devBreadSetServer(payload) {
+  return sb.rpc('user_set_state', Object.assign({ p_admin_id: DEV_UUID }, payload))
+    .then(({ data, error }) => {
+      if (error) throw error;
+      if (!data || data.ok !== true) throw new Error((data && data.msg) || 'failed');
+      devBreadRefreshAfterChange();
+      return data;
+    });
+}
+
+$('#btnDevSetBake').onclick = () => {
+  const v = devBreadView(); if (!v) return;
+  showInputModal(
+    _loadT('dev.setBakeTitle', '设置烘焙度'),
+    _loadT('dev.setBakeDesc', { level: v.level, cap: v.cap }, `当前 Lv${v.level}，本级上限 ${v.cap}。请输入要设置的烘焙度（0 起算，超过上限会自动升级）`),
+    String(v.bake),
+    (input) => {
+      const n = parseInt(input, 10);
+      if (isNaN(n) || n < 0) return showToast(_loadT('dev.invalidNumber', '请输入有效数字'), '❌');
+      devBreadSetServer({ p_bake: n }).then((d) => {
+        showToast(_loadT('dev.bakeSet', { level: d.level, bake: d.bake, cap: d.cap }, `烘焙度已设为 Lv${d.level} 的 ${d.bake}/${d.cap}`), '🍞');
+      }).catch((e) => showToast('设置失败：' + (e.message || e), '❌'));
+    }
+  );
+};
+
+$('#btnDevAddBake').onclick = () => {
+  const v = devBreadView(); if (!v) return;
+  showInputModal(
+    _loadT('dev.addBakeTitle', '增加烘焙度'),
+    _loadT('dev.addBakeDesc', '请输入要增加的烘焙度（如：100）'),
+    '100',
+    (input) => {
+      const n = parseInt(input, 10);
+      if (isNaN(n) || n <= 0) return showToast(_loadT('dev.invalidNumber', '请输入有效数字'), '❌');
+      if (typeof window.UserLevel === 'undefined' || typeof window.UserLevel.addBake !== 'function') {
+        return showToast('面包等级模块未加载', '❌');
+      }
+      window.UserLevel.addBake(n).then(() => {
+        const nv = window.UserLevel.getView();
+        const up = nv && nv.level > v.level;
+        showToast(
+          up
+            ? _loadT('dev.bakeLevelUp', { amount: n, level: nv.level }, `烘焙度 +${n}，升到 Lv${nv.level}！`)
+            : _loadT('dev.bakeAdded', { amount: n, level: nv ? nv.level : v.level, bake: nv ? nv.bake : v.bake, cap: nv ? nv.cap : v.cap },
+                `烘焙度 +${n}，现为 Lv${nv ? nv.level : v.level}（${nv ? nv.bake : v.bake}/${nv ? nv.cap : v.cap}）`),
+          up ? '🎉' : '🥖'
+        );
+      }).catch((e) => showToast('增加失败：' + (e.message || e), '❌'));
+    }
+  );
+};
+
+$('#btnDevSetBreadLevel').onclick = () => {
+  const v = devBreadView(); if (!v) return;
+  showInputModal(
+    _loadT('dev.setBreadLevelTitle', '设置面包等级'),
+    _loadT('dev.setBreadLevelDesc', '请输入目标等级（1~60），该级烘焙度从 0 开始'),
+    String(v.level),
+    (input) => {
+      const lv = parseInt(input, 10);
+      if (isNaN(lv) || lv < 1 || lv > 60) return showToast(_loadT('dev.invalidNumber', '请输入 1~60 的等级'), '❌');
+      devBreadSetServer({ p_level: lv, p_bake: 0 }).then((d) => {
+        showToast(_loadT('dev.breadLevelSet', { level: d.level, bake: d.bake, cap: d.cap }, `面包等级已设为 Lv${d.level}（烘焙度 ${d.bake}/${d.cap}）`), '📈');
+      }).catch((e) => showToast('设置失败：' + (e.message || e), '❌'));
     }
   );
 };
@@ -412,52 +533,101 @@ $('#btnDevSetForever').onclick = () => {
 
 $('#btnDevManageCodes').onclick = () => { $('#codeManageInput').value = ''; openOverlay($('#codeManageOverlay')); };
 
+/* 【修改】20261118：生成兑换码改为固定表单（类型下拉 + 数值 + 数量），
+   不再让用户手输「SVIP,30,10」这种格式；类型只能从下拉框选，避免输错。 */
+const DEV_GEN_UNITS = { vip: 'dev.genValueDays', svip: 'dev.genValueDays', points: 'dev.genValuePoints' };
+function syncDevGenUnit() {
+  const type = $('#devGenType').value;
+  const unit = $('#devGenValueUnit');
+  if (unit) unit.textContent = _loadT(DEV_GEN_UNITS[type], type === 'points' ? '（积分）' : '（天）');
+  const val = $('#devGenValue');
+  if (!val) return;
+  const n = parseInt(val.value, 10);
+  if (isNaN(n) || n < 1) val.value = type === 'points' ? 500 : 30;
+}
 $('#btnDevGenCode').onclick = () => {
-  showInputModal(_loadT('dev.genTitle', '批量生成兑换码'), _loadT('dev.genDesc', '格式：类型,数值,数量。\n例如：SVIP,30,10'), 'SVIP,30,10', async (input) => {
-      const parts = input.split(',').map(s => s.trim());
-      const type = (parts[0] || '').toLowerCase(); 
-      const val = parseInt(parts[1], 10);
-      const count = parseInt(parts[2], 10) || 1;
-
-      if (type !== 'vip' && type !== 'svip' && type !== 'points') {
-        return showToast(_loadT('dev.genTypeErr', '类型只能是 VIP / SVIP / POINT'), '❌');
-      }
-      if (isNaN(val) || val < 0) return showToast(_loadT('dev.genValueErr', '天数或积分数无效'), '❌');
-
-      showToast(_loadT('dev.genRequest', { count }), '⏳');
-      
-      const { data, error } = await sb.rpc('generate_redeem_code_v3', {
-        p_type: type, p_value: val, p_count: count, p_admin_id: DEV_UUID
-      });
-
-      if (error) return showToast(_loadT('dev.genFail', '生成失败：') + error.message, '❌');
-
-      const codeListText = data.join('\n');
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(codeListText).then(() => {
-          showToast(_loadT('dev.genCopied', { count }), '📋');
-        }).catch(() => {
-          showToast(_loadT('dev.genDone', { count }), '🎉');
-        });
-      }
-      showInputModal(_loadT('dev.genResultTitle', { count }), _loadT('dev.genResultDesc', '10位乱序，有效期7天。'), data[0], () => {});
-    }
+  $('#devGenType').value = 'svip';
+  $('#devGenValue').value = '30';
+  $('#devGenCount').value = '10';
+  $('#devGenResult').value = '';
+  syncDevGenUnit();
+  openOverlay($('#devGenOverlay'));
+};
+if ($('#devGenType')) $('#devGenType').addEventListener('change', syncDevGenUnit);
+if ($('#btnDevGenCancel')) $('#btnDevGenCancel').onclick = () => closeOverlay($('#devGenOverlay'));
+if ($('#btnDevGenCopy')) $('#btnDevGenCopy').onclick = () => {
+  const text = $('#devGenResult').value.trim();
+  if (!text) return showToast(_loadT('dev.genResultEmpty', '还没有生成结果'), '⚠️');
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(
+    () => showToast(_loadT('dev.genCopiedSimple', '已复制到剪贴板'), '📋'),
+    () => showToast(_loadT('dev.genCopyFail', '复制失败，请手动选中复制'), '⚠️')
   );
+};
+if ($('#btnDevGenRun')) $('#btnDevGenRun').onclick = async () => {
+  const type = $('#devGenType').value;                 /* 固定下拉：vip / svip / points */
+  const val = parseInt($('#devGenValue').value, 10);
+  const count = parseInt($('#devGenCount').value, 10);
+
+  if (type !== 'vip' && type !== 'svip' && type !== 'points') return showToast(_loadT('dev.genTypeErr', '类型只能是 VIP / SVIP / POINT'), '❌');
+  if (isNaN(val) || val < 1) return showToast(_loadT('dev.genValueErr', '天数或积分数无效'), '❌');
+  if (isNaN(count) || count < 1 || count > 200) return showToast(_loadT('dev.genCountErr', '数量需在 1~200 之间'), '❌');
+
+  const btn = $('#btnDevGenRun');
+  btn.disabled = true; btn.textContent = _loadT('dev.genRequesting', '生成中...');
+  showToast(_loadT('dev.genRequest', { count }), '⏳');
+
+  const { data, error } = await sb.rpc('generate_redeem_code_v3', {
+    p_type: type, p_value: val, p_count: count, p_admin_id: DEV_UUID
+  });
+
+  btn.disabled = false; btn.textContent = _loadT('dev.genRun', '生成');
+  if (error) return showToast(_loadT('dev.genFail', '生成失败：') + error.message, '❌');
+
+  const codeListText = (data || []).join('\n');
+  $('#devGenResult').value = codeListText;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(codeListText).then(() => {
+      showToast(_loadT('dev.genCopied', { count }), '📋');
+    }).catch(() => {
+      showToast(_loadT('dev.genDone', { count }), '🎉');
+    });
+  } else {
+    showToast(_loadT('dev.genDone', { count }), '🎉');
+  }
 };
 $('#btnCodeManageCancel').onclick = () => closeOverlay($('#codeManageOverlay'));
 /* 【修改】原来是「保存并追加」到本地 localStorage，兑换流程根本不读它，
    等于白存。现在改成：解析每行兑换码 → 直接写入云端 bread_redeem_codes 码表，
    用户输入即可立刻兑换；本地仍保留一份原始文本作为备份。 */
+/* 【新增】20261119：主题兑换码格式
+   THEME-STRING-<主题Key>-UNLOCK-<10位随机大写字母/数字>
+   只允许四季主题；实际码由后端生成，这里用于把已生成的码批量写入码表。 */
+const THEME_REDEEM_CODE_RE = /^THEME-STRING-([A-Z0-9]+)-UNLOCK-([A-Z0-9]{10})$/;
+const THEME_REDEEM_TIERS = {
+  SPRINGBLOOM: ['springbloom', 'springbloom-plus', 'springbloom-max', 'springbloom-ultimate'],
+  SPRING: ['springbloom', 'springbloom-plus', 'springbloom-max', 'springbloom-ultimate'],
+  SUMMER: ['summer', 'summer-plus', 'summer-max', 'summer-ultimate'],
+  AUTUMN: ['autumn', 'autumn-plus', 'autumn-max', 'autumn-ultimate'],
+  WINTER: ['winter', 'winter-plus', 'winter-max', 'winter-ultimate']
+};
+
 $('#btnCodeManageSave').onclick = async () => {
   const raw = $('#codeManageInput').value.trim();
   if (!raw) return showToast(_loadT('dev.codeEmpty', '请先输入兑换码'), '⚠️');
 
   const lines = raw.split(/\r?\n/).map(s => s.trim().toUpperCase()).filter(Boolean);
-  const rows = [], bad = [], fixedThemeCodes = [];
+  const rows = [], bad = [];
 
   lines.forEach(line => {
-    // 新春主题码是前端固定字符串，不需要写进码表
-    if (line === 'THEME-SPRING-UNLOCK') { fixedThemeCodes.push(line); return; }
+    const themeMatch = line.match(THEME_REDEEM_CODE_RE);
+    if (themeMatch) {
+      const themeKey = themeMatch[1];
+      if (!THEME_REDEEM_TIERS[themeKey]) { bad.push(line); return; }
+      // 主题 Key 由 code 第 3 段解析；value 固定 0（现有表 value 是 int8）
+      rows.push({ code: line, type: 'theme', value: 0, theme_key: themeKey, is_used: false, is_expired: false, allow_multi_use: false });
+      return;
+    }
+
     const m = line.match(/^(VIP|SVIP|POINT)-STRING-([A-Z0-9]+)-([A-Z0-9]+)$/);
     if (!m) { bad.push(line); return; }
     const type = (m[1] === 'POINT') ? 'points' : m[1].toLowerCase();  // POINT → points
@@ -466,7 +636,7 @@ $('#btnCodeManageSave').onclick = async () => {
     if (token === 'LIFE') value = 0;            // LIFE = 永久
     else { const n = token.match(/\d+/); value = n ? parseInt(n[0], 10) : NaN; }
     if (!Number.isFinite(value)) { bad.push(line); return; }
-    rows.push({ code: line, type, value });
+    rows.push({ code: line, type, value, theme_key: null, is_used: false, is_expired: false, allow_multi_use: false });
   });
 
   if (bad.length) {
@@ -480,10 +650,11 @@ $('#btnCodeManageSave').onclick = async () => {
 
   if (!rows.length) {
     closeOverlay($('#codeManageOverlay'));
-    return showToast(_loadT('dev.springCodeHint', '新春兑换码是固定主题码，无需写入码表'), '🧧');
+    return showToast(_loadT('dev.codeEmpty', '请先输入兑换码'), '⚠️');
   }
 
   showToast(_loadT('dev.syncing', '正在同步云端...'), '⏳');
+
   const { error } = await sb.from('bread_redeem_codes').insert(rows);
   if (error) return showToast(_loadT('dev.codeCloudFail', '写入云端失败：') + error.message, '❌');
 

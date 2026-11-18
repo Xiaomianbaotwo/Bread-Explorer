@@ -4,6 +4,9 @@
    ========================================================= */
 
 async function syncEmailsToCloud(u) {
+  /* 【修改】20261118 P0：只同步真正的邮件数组；u.emails 缺失时直接跳过，
+     避免把 undefined / null 当成空数组写到云端，把整箱邮件清掉。 */
+  if (!u || !Array.isArray(u.emails)) return;
   try {
     await sb.rpc('update_user_emails', { p_emails: u.emails });
   } catch (e) {
@@ -137,8 +140,13 @@ function renderMails() {
         const isAllDone = doneCount === codeEntries.length;
         statusHtml = `<span style="color:${isAllDone ? '#e74c3c' : '#27ae60'}">${_loadT('mail.codeClaimedCount', { done: doneCount, total: codeEntries.length })}</span>`;
       } else if (e.type === 'vip_reward') {
-        /* 【新增】等级奖励邮件的领取状态 */
-        statusHtml = `<span style="color:${e.isClaimed ? '#e74c3c' : '#27ae60'}">${e.isClaimed ? _loadT('vip.rewardClaimed') : _loadT('vip.rewardPending')}</span>`;
+        /* 【修正】20261117：Lv60 / Lv90 这类只有「每日额外积分」的等级奖励没有东西可领，
+           以前一律显示「待领取」，用户会以为漏领了。现在只对真的带自选名额的邮件显示领取状态。 */
+        const cfg = e.reward || {};
+        const hasPicks = (Number(cfg.plusPick) > 0) || (Number(cfg.maxPick) > 0) || cfg.allPlus || cfg.allMax || cfg.allBase || cfg.springTheme;
+        statusHtml = hasPicks
+          ? `<span style="color:${e.isClaimed ? '#e74c3c' : '#27ae60'}">${e.isClaimed ? _loadT('vip.rewardClaimed') : _loadT('vip.rewardPending')}</span>`
+          : `<span style="color:var(--ink-soft)">${_loadT('vip.rewardAuto')}</span>`;
       }
 
       item.innerHTML = `
@@ -226,6 +234,8 @@ function renderMails() {
             let upUsers = getUsersDB(); let upU = upUsers[currentUser];
             const tm = upU.emails.find(m => m.id === e.id); if (tm) tm.isClaimed = true;
             await store.set('bb-users', upUsers); 
+            /* 【修改】20261118 P0：emails 不再随 bread_assets 整行 upsert，领取状态改用单列 RPC 同步。 */
+            try { await syncEmailsToCloud(upU); } catch (e) { /* 邮件状态同步失败不阻塞后续回拉 */ }
             
             if (typeof syncFromCloud === 'function') await syncFromCloud();
             updateUserUI(); renderMails();
@@ -292,7 +302,14 @@ function renderMails() {
           showToast(_loadT('mail.claimPointsSuccess', { pts: e.points }), '🪙');
           let upUsers = getUsersDB(); let upU = upUsers[currentUser];
           const tm = upU.emails.find(m => m.id === e.id); if (tm) tm.isClaimed = true;
-          await store.set('bb-users', upUsers); updateUserUI(); renderMails();
+          await store.set('bb-users', upUsers);
+          /* 【修改】20261118 P0：emails 已从 bread_assets 整行 upsert 移除，领取状态改用单列 RPC 同步。 */
+          try { await syncEmailsToCloud(upU); } catch (e) { /* 邮件状态同步失败不阻塞积分回拉 */ }
+          /* 【修改】20261118 P0：redeem_benefits 是服务端加积分，本地 points 没变。
+             以前这里直接 updateUserUI，store.set 又把旧积分整行写回云端，等于白领。
+             现在 store.set 只写变化列（不会碰 points），再拉一次云端权威值把新积分取回来。 */
+          if (typeof syncFromCloud === 'function') await syncFromCloud();
+          updateUserUI(); renderMails();
         };
       }
 
@@ -343,8 +360,10 @@ function renderMails() {
 
 $('#btnMail').onclick = () => {
   if (!currentUser) return;
-  renderMails();
+  /* 【修改】20261119：先开窗再渲染。原来先 renderMails 再 openOverlay，
+     第二次打开时数据异常抛错就会「点了没反应」。 */
   openOverlay($('#mailOverlay'));
+  try { renderMails(); } catch (err) { console.warn('[邮件] 渲染失败', err); }
   /* 【新增】VIP 任务记账：查看一封邮件（每日任务「打开邮件中心查看任意一封邮件」） */
   try { if (window.VipTasks) window.VipTasks.track('mailView'); } catch (e) { /* 记账失败不影响打开 */ }
 };

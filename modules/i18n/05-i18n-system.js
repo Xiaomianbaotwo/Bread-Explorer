@@ -18,7 +18,7 @@
   };
 
   window.__BB_I18N.zh['fireworks'] = {
-          newYear: "{{year}} 快乐!",
+          newYear: "{{year}} 新年快乐!",
   };
 
   window.__BB_I18N.zh['updater'] = {
@@ -34,6 +34,8 @@
           /* 【新增】花事书房（附属小站入口） */
           articleName: "花事书房",
           articleDesc: "沉浸式花事阅读 · 古文专栏",
+          /* 【新增】20261119：花事书房门禁提示（VIP/SVIP 直接进，普通用户需面包等级） */
+          needBreadLevel: "需要面包等级 Lv{{level}} 或 VIP / SVIP 才能进入",
   };
 
   window.__BB_I18N.zh['userCenter'] = {
@@ -57,6 +59,27 @@
           btnSetStar: '⭐ 设置星光值',
           btnAddStar: '✨ 增加星光值',
           btnSetLevel: '🎖️ 设置 (S)VIP 等级',
+          /* 【新增】面包等级调试按钮（烘焙度 = 面包等级的升级经验） */
+          /* 分组标题（开发者面板折叠分组） */
+          groupAccount: '👤 账号',
+          groupMember: '💎 会员身份',
+          groupStar: '⭐ 星光值 / VIP 等级',
+          groupBread: '🍞 面包等级',
+          groupRedeem: '🎫 兑换码 / 红包',
+          groupDebug: '🐞 调试工具',
+          btnSetBake: '🍞 设置烘焙度',
+          btnAddBake: '🥖 增加烘焙度',
+          btnSetBreadLevel: '📈 设置面包等级',
+          setBakeTitle: '设置烘焙度',
+          setBakeDesc: '输入要设置的烘焙度数值（0 开始，超过本级上限会自动升级）',
+          addBakeTitle: '增加烘焙度',
+          addBakeDesc: '输入要增加的烘焙度（如：100）',
+          setBreadLevelTitle: '设置面包等级',
+          setBreadLevelDesc: '输入目标等级（1~60），该级烘焙度从 0 开始',
+          bakeSet: '烘焙度已设为 Lv{{level}} 的 {{bake}}/{{cap}}',
+          bakeAdded: '烘焙度 +{{amount}}，现为 Lv{{level}}（{{bake}}/{{cap}}）',
+          bakeLevelUp: '烘焙度 +{{amount}}，升到 Lv{{level}}！',
+          breadLevelSet: '面包等级已设为 Lv{{level}}（烘焙度 {{bake}}/{{cap}}）',
           btnSetNone: '设为普通用户',
           btnSetVip: '设为 VIP',
           btnSetSvip: '设为 SVIP',
@@ -131,6 +154,7 @@
           setLevelTitle: '设置 (S)VIP 等级',
           setLevelDesc: '请输入目标等级（1~100），星光值会归零',
           levelSet: '已设为 Lv{{level}}（星光值 {{point}}/{{cap}}）',
+          rewardMailSent: '已补发 {{n}} 封等级奖励邮件',
           needMember: '请先设为 VIP / SVIP，再调整星光值',
           setNoneTitle: '设为普通用户',
           setNoneDesc: '确认清空所有 VIP 特权？输入任意字符确认',
@@ -150,13 +174,31 @@
           genDone: '成功生成 {{count}} 个码',
           genResultTitle: '成功生成 {{count}} 个（已复制全部）',
           genResultDesc: '10位乱序，有效期7天。',
+          /* 【新增】20261118 生成兑换码固定表单 */
+          genFormTitle: '🎲 生成兑换码',
+          genFormDesc: '选择类型、填写数值和数量即可生成，结果自动复制。',
+          genType: '类型',
+          genTypeVip: 'VIP（按天）',
+          genTypeSvip: 'SVIP（按天）',
+          genTypePoint: '积分 POINT',
+          genValue: '数值',
+          genValueDays: '（天）',
+          genValuePoints: '（积分）',
+          genCount: '数量',
+          genCountErr: '数量需在 1~200 之间',
+          genRun: '生成',
+          genRequesting: '生成中...',
+          genCopy: '复制结果',
+          genCopiedSimple: '已复制到剪贴板',
+          genCopyFail: '复制失败，请手动选中复制',
+          genResultEmpty: '还没有生成结果',
           addOk: '添加成功',
           /* 【新增】自定义兑换码写入云端相关提示（中英双语） */
           codeEmpty: '请先输入兑换码',
           codeFormatErr: '以下兑换码格式不正确（应为 VIP/SVIP/POINT-STRING-数值-随机尾码）：',
           codeCloudFail: '写入云端失败：',
           codeCloudOk: '已写入云端 {{count}} 个兑换码',
-          springCodeHint: '新春兑换码是固定主题码，无需写入码表，用户直接输入即可兑换',
+          springCodeHint: '新春固定码无需写码表；四季主题码格式为 THEME-STRING-<主题>-UNLOCK-<10位随机>',
   };
 
   /* ---------- 英文 ---------- */
@@ -174,7 +216,7 @@
   };
 
   window.__BB_I18N.en['fireworks'] = {
-          newYear: "Happy {{year}}!",
+          newYear: "HAPPY NEW YEAR {{year}}!",
   };
 
   window.__BB_I18N.en['updater'] = {
@@ -190,12 +232,14 @@
           /* 【新增】Flower Reading Studio (standalone site entry) */
           articleName: "Flower Reading Studio",
           articleDesc: "Immersive flower-themed reading · Classical prose column",
+          /* 【新增】20261119：花事书房门禁提示 */
+          needBreadLevel: "Requires bread level Lv{{level}} or VIP / SVIP",
   };
 
   window.__BB_I18N.en['userCenter'] = {
           languageSettings: '🌐 Language', langZh: '中文', langEn: 'English',
           guestUser: 'User',
-          screenShake: 'Screen Shake on Open', showBeta: '🧪 Show Beta Features', clock12h: '🕒 Use 12-Hour Clock (AM/PM)',
+          screenShake: 'Screen Shake on Open', showBeta: '🧪 Show Test Features (Beta)', clock12h: '🕒 Use 12-Hour Clock (AM/PM)',
           weatherSettings: '📍 Weather Location', clickToModify: 'Click to modify ›',
           redeemBtn: '🎫 Redeem', pwdBtn: '🔐 Change Password', deleteBtn: 'Delete Account', logoutBtn: 'Log Out', closeBtn: 'Close Panel',
           /* 【新增】Personal signature (pairs with the VIP "edit profile" task) */
@@ -213,6 +257,27 @@
           btnSetStar: '⭐ Set star points',
           btnAddStar: '✨ Add star points',
           btnSetLevel: '🎖️ Set (S)VIP level',
+          /* 【新增】bread level debug buttons */
+          /* group titles */
+          groupAccount: '👤 Account',
+          groupMember: '💎 Membership',
+          groupStar: '⭐ Star points / VIP level',
+          groupBread: '🍞 Bread level',
+          groupRedeem: '🎫 Redeem codes / Red packet',
+          groupDebug: '🐞 Debug tools',
+          btnSetBake: '🍞 Set bake',
+          btnAddBake: '🥖 Add bake',
+          btnSetBreadLevel: '📈 Set bread level',
+          setBakeTitle: 'Set bake',
+          setBakeDesc: 'Enter the bake value (starts at 0; passing the cap upgrades automatically)',
+          addBakeTitle: 'Add bake',
+          addBakeDesc: 'Enter how much bake to add (e.g. 100)',
+          setBreadLevelTitle: 'Set bread level',
+          setBreadLevelDesc: 'Enter the target level (1~60); bake starts at 0 for that level',
+          bakeSet: 'Bake set to Lv{{level}} ({{bake}}/{{cap}})',
+          bakeAdded: 'Bake +{{amount}}, now Lv{{level}} ({{bake}}/{{cap}})',
+          bakeLevelUp: 'Bake +{{amount}}, reached Lv{{level}}!',
+          breadLevelSet: 'Bread level set to Lv{{level}} ({{bake}}/{{cap}})',
           btnSetNone: 'Set to normal user',
           btnSetVip: 'Set to VIP',
           btnSetSvip: 'Set to SVIP',
@@ -287,6 +352,7 @@
           setLevelTitle: 'Set (S)VIP level',
           setLevelDesc: 'Enter the target level (1~100); star points reset to 0',
           levelSet: 'Level set to Lv{{level}} (star points {{point}}/{{cap}})',
+          rewardMailSent: '{{n}} level reward mail(s) re-sent',
           needMember: 'Set VIP / SVIP first, then adjust star points',
           setNoneTitle: 'Set to normal user',
           setNoneDesc: 'Clear all VIP privileges? Type anything to confirm',
@@ -306,12 +372,30 @@
           genDone: 'Generated {{count}} codes',
           genResultTitle: 'Generated {{count}} codes (all copied)',
           genResultDesc: '10 random characters, valid for 7 days.',
+          /* 【新增】20261118 fixed-form redeem code generator */
+          genFormTitle: '🎲 Generate redeem codes',
+          genFormDesc: 'Pick a type, enter value and count. Results are copied automatically.',
+          genType: 'Type',
+          genTypeVip: 'VIP (in days)',
+          genTypeSvip: 'SVIP (in days)',
+          genTypePoint: 'Points (POINT)',
+          genValue: 'Value',
+          genValueDays: '(days)',
+          genValuePoints: '(points)',
+          genCount: 'Count',
+          genCountErr: 'Count must be between 1 and 200',
+          genRun: 'Generate',
+          genRequesting: 'Generating...',
+          genCopy: 'Copy result',
+          genCopiedSimple: 'Copied to clipboard',
+          genCopyFail: 'Copy failed — please select and copy manually',
+          genResultEmpty: 'Nothing generated yet',
           addOk: 'Added',
           /* 【新增】自定义兑换码写入云端相关提示（中英双语） */
           codeEmpty: 'Please enter a redeem code first',
           codeFormatErr: 'Invalid code format (expected VIP/SVIP/POINT-STRING-value-random):',
           codeCloudFail: 'Failed to write to cloud: ',
           codeCloudOk: 'Wrote {{count}} redeem code(s) to the cloud',
-          springCodeHint: 'The Spring code is a fixed theme code — no need to add it to the table, users can redeem it directly',
+          springCodeHint: 'The Spring fixed code needs no table entry; seasonal theme codes use THEME-STRING-<theme>-UNLOCK-<10 random chars>',
   };
 })();

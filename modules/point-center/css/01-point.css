@@ -1,0 +1,293 @@
+/* =========================================================
+   modules/point-center/css/01-point.css
+   积分中心专属样式（面板主体复用 VIP 面板的组件类）
+   ========================================================= */
+
+/* 当前积分卡：沿用 vip-level-box 的外框，只放大数字 */
+.pc-point-box .vip-level-num {
+  color: var(--ink);
+  font-weight: 800;
+}
+.pc-point-box .vip-point-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+}
+.pc-point-tip {
+  margin-top: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+/* 去商城按钮：和签到按钮同宽，但用描边样式区分 */
+.pc-shop-btn {
+  margin-top: 10px;
+  background: transparent !important;
+  border: 1px dashed var(--card-border) !important;
+  color: var(--accent) !important;
+}
+/* =========================================================
+   【新增】20261119：签到月历（放在签到按钮下面）
+   ========================================================= */
+.pc-calendar {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.pc-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.pc-cal-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.pc-cal-nav {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+.pc-cal-nav:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.pc-cal-nav:disabled { opacity: .35; cursor: default; }
+
+.pc-cal-week,
+.pc-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.pc-cal-week span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  padding-bottom: 2px;
+}
+.pc-cal-cell {
+  position: relative;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: transparent;
+}
+.pc-cal-cell.is-empty { background: transparent; }
+.pc-cal-cell.is-on {
+  background: var(--accent);
+  color: #fff;
+}
+.pc-cal-cell.is-on::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.85);
+}
+.pc-cal-cell.is-today {
+  box-shadow: 0 0 0 2px var(--accent) inset;
+  color: var(--accent);
+}
+.pc-cal-cell.is-today.is-on { color: #fff; }
+.pc-cal-foot {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: center;
+}
+/* =========================================================
+   【新增】20261119：活动日 / 7·30 天节点 / 热力图 / 补签
+   ========================================================= */
+.pc-cal-cell.is-event {
+  outline: 2px dashed #e8a63c;
+  outline-offset: -2px;
+}
+.pc-cal-gift {
+  position: absolute;
+  left: 2px;
+  top: -1px;
+  font-size: 8px;
+  font-style: normal;
+  opacity: .9;
+}
+.pc-cal-flag {
+  position: absolute;
+  right: 2px;
+  top: -2px;
+  font-size: 8px;
+  font-weight: 800;
+  color: #fff;
+  background: #e0603c;
+  border-radius: 6px;
+  padding: 0 3px;
+  line-height: 1.2;
+}
+.pc-cal-event-tip {
+  margin-top: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.pc-heat { margin-top: 10px; }
+.pc-heat-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  margin-bottom: 5px;
+}
+.pc-heat-grid {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 3px;
+}
+.pc-heat-cell {
+  height: 9px;
+  border-radius: 3px;
+  background: rgba(0,0,0,.06);
+}
+.pc-heat-cell.lv1 { background: rgba(232,166,60,.35); }
+.pc-heat-cell.lv2 { background: rgba(232,166,60,.65); }
+.pc-heat-cell.lv3 { background: #e8a63c; }
+
+.pc-makeup-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px dashed var(--card-border);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pc-makeup-btn:hover { color: var(--accent); border-color: var(--accent); }
+/* =========================================================
+   【新增】20261119：日历扩展（明细 / 悬停气泡 / 全勤 / 宝箱 / 生日 / 提醒 / 倒计时）
+   ========================================================= */
+.pc-calendar { position: relative; }
+.pc-cal-tip {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  max-width: 170px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(40, 30, 20, .92);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  pointer-events: none;
+  white-space: normal;
+}
+.pc-cal-countdown {
+  margin-top: 5px;
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #b8752a;
+}
+.pc-cal-detail {
+  margin-top: 6px;
+  padding: 6px 8px;
+  border-radius: 9px;
+  background: rgba(0,0,0,.035);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.4;
+}
+.pc-cal-tools {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pc-cal-tool-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.pc-cal-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  opacity: .7;
+}
+.pc-cal-mini-btn {
+  padding: 3px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.pc-cal-mini-btn.can {
+  border-color: var(--accent);
+  color: #fff;
+  background: var(--accent);
+}
+.pc-cal-date {
+  max-width: 130px;
+  padding: 2px 6px;
+  border-radius: 7px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+/* 【新增】20261118 生日三格输入（年 / 月 / 日），年和月日分开填更好懂 */
+.pc-bd-box { display: inline-flex; align-items: center; gap: 4px; }
+.pc-bd-box .pc-bd-year { width: 52px; max-width: 52px; }
+.pc-bd-box .pc-bd-num { width: 40px; max-width: 40px; text-align: center; }
+.pc-bd-box input::-webkit-outer-spin-button,
+.pc-bd-box input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.pc-bd-box input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+.pc-bd-hint { font-size: 10px; color: var(--ink-soft); opacity: .8; margin: 2px 0 4px 2px; }
+.pc-cal-bday {
+  position: absolute;
+  left: 1px;
+  bottom: -2px;
+  font-size: 8px;
+  font-style: normal;
+}
+.pc-cal-chest {
+  position: absolute;
+  right: 1px;
+  bottom: -3px;
+  font-size: 9px;
+  font-style: normal;
+}
+.pc-cal-cell.is-bday { box-shadow: inset 0 0 0 2px #e06b8a; border-radius: 8px; }

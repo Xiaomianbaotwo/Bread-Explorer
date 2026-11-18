@@ -49,27 +49,40 @@ input::placeholder { color: var(--ink-soft); }
 .go { border: none; cursor: pointer; border-radius: 999px; padding: 10px 22px; font-size: 15px; font-weight: 600; color: #fff; background: var(--accent); box-shadow: 0 6px 16px rgba(0,0,0,0.15); transition: .2s; flex-shrink: 0; }
 .go:hover { transform: translateY(-2px) scale(1.03); }
 
-.engine-menu { position: absolute; top: calc(100% + 10px); left: 6px; min-width: 170px; z-index: 999; background: var(--bg1); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow); padding: 8px; display: none; flex-direction: column; }
+.engine-menu { position: absolute; top: calc(100% + 10px); left: 6px; min-width: 170px; z-index: 700; background: var(--bg1); border: 1px solid var(--card-border); border-radius: 16px; box-shadow: var(--shadow); padding: 8px; display: none; flex-direction: column; }
 .engine-menu.show { display: flex; animation: rise .25s; }
 .engine-item { display: flex; gap: 12px; align-items: center; padding: 10px 14px; border-radius: 10px; cursor: pointer; font-size: 15px; }
 .engine-item span { width: 22px; text-align: center; }
 .engine-item:hover { background: rgba(150, 150, 150, .15); }
 .engine-item.active { color: var(--accent); font-weight: 600; }
 
-.sites-title { margin-top: 36px; color: var(--ink-soft); font-size: 13px; letter-spacing: 1px; position: relative; z-index: 11; }
+/* 【修改】标题行拆成 标题 + 容量计数 + 导入导出（20261117） */
+.sites-head { margin-top: 36px; display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; position: relative; z-index: 11; }
+.sites-title { color: var(--ink-soft); font-size: 13px; letter-spacing: 1px; }
+.sites-tools { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.sites-counter { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink-soft); letter-spacing: 0; }
+.sites-counter.is-full { color: #e74c3c; border-color: rgba(231, 76, 60, .55); }
+.sites-tool { font-family: inherit; font-size: 12px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink-soft); cursor: pointer; transition: color .2s, border-color .2s, transform .2s; }
+.sites-tool:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.sites-tool.vip { border-color: rgba(212, 175, 55, .55); }
 .sites { display: grid; grid-template-columns: repeat(auto-fill, 90px); gap: 12px; width: min(680px, 92vw); margin: 14px auto 0; position: relative; z-index: 11; justify-content: center; }
-.tile { position: relative; height: 90px; border-radius: 20px; background: var(--card); border: 1px solid var(--card-border); backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; color: var(--ink); padding: 8px; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s, opacity .2s; user-select: none; }
+.tile { position: relative; height: 100px; border-radius: 20px; background: var(--card); border: 1px solid var(--card-border); backdrop-filter: blur(8px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; text-decoration: none; color: var(--ink); padding: 8px; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), box-shadow .25s, opacity .2s; user-select: none; }
 .tile:hover { transform: translateY(-6px) scale(1.04); box-shadow: var(--shadow); }
 .tile.dragging { opacity: 0.4; transform: scale(0.95); cursor: grabbing; }
 .tile.drag-over { border: 2px dashed var(--accent); transform: scale(1.05); }
 /* 【修改】站点名称上限放宽后，最多显示 4 行再省略，避免撑破 90px 的方块 */
-.tile .name { font-size: 13px; font-weight: 600; text-align: center; word-break: break-word; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+/* 【修改】20261117：去掉 24px 图标位后名词可用宽度变大，行数放宽到 5 行，卡片加高到 100px */
+.tile .name { font-size: 13px; font-weight: 600; text-align: center; word-break: break-word; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5; overflow: hidden; }
+/* 【新增】favicon 图标位：24px 图标 + 首字母色块回退（20261117） */
+/* 【删除】20261117：卡片图标位相关样式（.ico-slot / .ico / .ico-letter）随 favicon 抓取一并移除 */
 .tile:hover .name { color: var(--accent); }
 .tile .del { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%; border: none; background: rgba(0, 0, 0, .35); color: #fff; font-size: 10px; cursor: pointer; opacity: 0; transition: .2s; display: flex; align-items: center; justify-content: center; }
 .tile:hover .del { opacity: 1; }
 .tile .del:hover { background: #e74c3c; }
 .tile.add { border: 2px dashed var(--ink-soft); background: transparent; color: var(--ink-soft); }
 .tile.add:hover { color: var(--accent); border-color: var(--accent); }
+.tile.add.is-full { opacity: .45; cursor: not-allowed; }
+.tile.add.is-full:hover { color: var(--ink-soft); border-color: var(--ink-soft); transform: none; box-shadow: none; }
 .tile.add .plus { font-size: 26px; font-weight: 300; }
 /* =========================================================
    SortableJS 拖拽特效 (模拟 Quark 的物理悬浮感)

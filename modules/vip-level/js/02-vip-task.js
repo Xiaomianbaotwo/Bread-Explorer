@@ -44,6 +44,20 @@
     { id: 'm_theme',   cycle: 'monthly', event: 'themeShop',   need: 12, reward: 150 }
   ];
 
+  /* ---------- 生效的任务参数 ----------
+     【新增】20261118：需要次数 / 奖励星光值优先读云端 vip_task_config
+     （由 06-vip-config.js 拉取），表里没配或读取失败就用上面 TASKS 的默认值。
+     这样在 Supabase 里改 need_count / reward_point 会真正生效，不再是摆设。 */
+  function eff(t) {
+    const c = (window.VipConfig && typeof window.VipConfig.task === 'function')
+      ? window.VipConfig.task(t.id) : null;
+    return {
+      need: (c && Number(c.need) > 0) ? Number(c.need) : t.need,
+      reward: (c && c.reward !== null && c.reward !== undefined && Number(c.reward) >= 0)
+        ? Number(c.reward) : t.reward
+    };
+  }
+
   /* ---------- 周期标识 ---------- */
   function pad2(n) { return n < 10 ? '0' + n : '' + n; }
 
@@ -129,6 +143,10 @@
   /* ---------- 记账：某个任务相关动作发生了一次 ----------
      event 由各功能入口调用（搜索 / 打开主题商店 / 打开兑换页 / 查看主页 / 打开邮件 / 修改资料 / 提交建议 / 签到） */
   function track(event, n) {
+    /* 【新增】20261118：先转发给面包等级（普通用户也记账），
+       再走原 VIP 任务逻辑；两者互不影响，非会员在下面会被 return */
+    try { if (window.UserLevel && typeof window.UserLevel.track === 'function') window.UserLevel.track(event); } catch (e) { /* 忽略 */ }
+
     const r = rec();
     if (!r) return false;
     const u = r.u;
@@ -215,12 +233,13 @@
 
     const st = ensureTaskState(u);
     const box = st[task.cycle];
-    const done = Math.min(task.need, Number(box.counters[task.event]) || 0);
+    const p = eff(task);                       /* 【新增】云端配置优先 */
+    const done = Math.min(p.need, Number(box.counters[task.event]) || 0);
 
     if (box.claimed[task.id]) return { ok: false, reason: 'claimed' };
-    if (done < task.need) return { ok: false, reason: 'not-done' };
+    if (done < p.need) return { ok: false, reason: 'not-done' };
 
-    const res = window.VIPCore.addStar(task.reward, 'task:' + task.id);
+    const res = window.VIPCore.addStar(p.reward, 'task:' + task.id);
     if (!res || !res.ok) return { ok: false, reason: (res && res.reason) || 'add-failed' };
 
     /* addStar 内部会重新读一次用户记录并写盘，这里重新取最新对象再标记领取 */
@@ -234,7 +253,7 @@
     if (typeof window.VipUI !== 'undefined' && typeof window.VipUI.refreshIfOpen === 'function') {
       try { window.VipUI.refreshIfOpen(); } catch (e) { /* 忽略 */ }
     }
-    return { ok: true, reward: task.reward };
+    return { ok: true, reward: p.reward };
   }
 
   /* ---------- 独立签到 ---------- */
@@ -288,14 +307,17 @@
 
     const groups = CYCLES.map(cycle => {
       const box = st[cycle];
-      const items = TASKS.filter(t => t.cycle === cycle).map(t => {
-        const progress = Math.min(t.need, Number(box.counters[t.event]) || 0);
+      const items = TASKS
+        .filter(t => !(window.VipConfig && typeof window.VipConfig.isDisabled === 'function' && window.VipConfig.isDisabled(t.id)))
+        .filter(t => t.cycle === cycle).map(t => {
+        const p = eff(t);                       /* 【新增】云端配置优先 */
+        const progress = Math.min(p.need, Number(box.counters[t.event]) || 0);
         return {
           id: t.id,
-          need: t.need,
-          reward: t.reward,
+          need: p.need,
+          reward: p.reward,
           progress,
-          done: progress >= t.need,
+          done: progress >= p.need,
           claimed: !!box.claimed[t.id]
         };
       });

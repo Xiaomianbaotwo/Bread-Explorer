@@ -13,15 +13,12 @@
 
 (() => {
   /* 开关清单：id -> { label, defaultOn, legacyKey }
-     legacyKey：兼容既有的 localStorage 开关，保证老用户状态不丢 */
+     legacyKey：兼容既有的 localStorage 开关，保证老用户状态不丢
+     【修改】20261117：面包气象台（含侧边天气卡片）已转正式功能，
+     删除 beta_weather_query_tool 开关，这里只剩好友系统一个内测能力。 */
   const FLAGS = {
     beta_friend_system: {
       label: '好友系统（内测）',
-      defaultOn: false,
-      legacyKey: 'bb-show-beta'
-    },
-    beta_weather_query_tool: {
-      label: '查询天气工具（内测）',
       defaultOn: false,
       legacyKey: 'bb-show-beta'
     }

@@ -8,8 +8,12 @@ function applyTheme() {
   if (theme === 'dark') body.classList.add('dark');
   
   if (currentTheme && currentTheme !== 'default') {
-    let baseTheme = currentTheme.replace('-plus', '');
+    /* 【修改】20261119：同时剥掉 -plus / -max，蜂蜜工坊 Max 也能落到 theme-honey */
+    let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
     body.classList.add('theme-' + baseTheme);
+    /* 档位类：让蜂蜜工坊 Plus / Max 用更深一层的配色 */
+    if (currentTheme.endsWith('-plus')) body.classList.add('theme-tier-plus');
+    else if (currentTheme.endsWith('-max')) body.classList.add('theme-tier-max');
   }
   
   $('#btnTheme').textContent = theme === 'dark' ? '☀️' : '🌙';
@@ -51,7 +55,11 @@ $('#btnTheme').onclick = () => { theme = theme === 'dark' ? 'light' : 'dark'; st
 
 $('#btnThemeSelect').onclick = () => {
   const grid = $('#themeGrid'); grid.innerHTML = '';
+  /* 【新增】20261119：蜂蜜工坊是面包等级专属主题，主站没解锁时子站不列出来 */
+  const u = mainUser();
+  const owned = (u && Array.isArray(u.unlockedThemes)) ? u.unlockedThemes : [];
   Object.entries(THEMES).forEach(([key, t]) => {
+    if (key.indexOf('honey') === 0 && owned.indexOf(key) < 0) return;
     const b = document.createElement('button');
     b.className = 'theme-btn' + (currentTheme === key ? ' active' : '');
     b.textContent = t.name;
@@ -67,14 +75,43 @@ $('#btnThemeSelect').onclick = () => {
 $('#btnThemeClose').onclick = () => $('#themeOverlay').classList.remove('show');
 
 // 字体控制
+/* 【修改】20261119：优先读主站当前用户的中文字体（u.zhFont），
+   主站没登录/没设置时才退回子站自己的 read-font。
+   主站字体 id 与主站 getFontFamily 的映射保持一致，本地字体靠 ../css/06-fonts.css 的 @font-face 提供。 */
+const ZH_FONT_FAMILY = {
+  default: '"PingFang SC", "Microsoft YaHei", sans-serif',
+  kai: '"KaiTi", "STKaiti", "楷体"',
+  song: '"SimSun", "Songti SC", "宋体"',
+  round: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei"',
+  mono: '"Consolas", "Courier New", monospace',
+  'local-zh-1': "'YangRenDong'",
+  'local-zh-2': "'ZiHunGaoBai'",
+  'local-zh-3': "'ZiHunJiaoLvMao'",
+  'local-zh-4': "'ZiHunXiaoXiaoLe'",
+  'local-zh-5': "'ZiHunTianDou'",
+  'local-zh-6': "'ZiHunXiaRi'",
+  'local-zh-7': "'ZiHunAnJiang'",
+  'local-zh-8': "'ZiHunYueSong'",
+  'local-zh-9': "'ZiXiaoHunChuLin'",
+  'local-zh-10': "'ZiXiaoHunMengMengDa'",
+  'local-zh-11': "'ZiXiaoHunPangPang'",
+  'local-zh-12': "'ZiXiaoHunTianZhen'",
+  'local-zh-13': "'ZiXiaoHunYangRenDong'"
+};
+
+function mainZhFontId() {
+  const u = mainUser();
+  if (u && typeof u.zhFont === 'string' && u.zhFont) return u.zhFont;
+  return null;
+}
+
 function applyFont(fontId) {
-  let family = '"PingFang SC", "Microsoft YaHei", sans-serif';
-  if (fontId === 'kai') family = '"KaiTi", "STKaiti", "楷体", serif';
-  if (fontId === 'song') family = '"SimSun", "Songti SC", "宋体", serif';
-  if (fontId === 'round') family = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei"';
-  if (fontId === 'mono') family = '"Consolas", "Courier New", monospace';
+  const useId = mainZhFontId() || fontId || 'default';
+  const family = ZH_FONT_FAMILY[useId]
+    || '"PingFang SC", "Microsoft YaHei", sans-serif';
   document.body.style.fontFamily = family;
-  $('#articleContent').style.fontFamily = family;
+  const content = $('#articleContent');
+  if (content) content.style.fontFamily = family;
 }
 
 $('#btnFontSelect').onclick = () => {

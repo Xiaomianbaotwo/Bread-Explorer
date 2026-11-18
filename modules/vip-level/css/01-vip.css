@@ -361,9 +361,97 @@
   flex-shrink: 0;
 }
 
+/* ---------- 【新增】20261118 积分兑星光值 ---------- */
+.vip-exchange-box {
+  margin: 14px 0 4px;
+  padding: 12px 13px;
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.vip-exchange-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.vip-exchange-quota {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+
+.vip-exchange-tip {
+  margin: 6px 0 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.vip-exchange-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vip-exchange-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 9px 8px;
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+  background: var(--card-bg, rgba(255, 255, 255, 0.05));
+  color: var(--ink);
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.vip-exchange-item:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+}
+
+.vip-exchange-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ve-star { font-size: 12px; font-weight: 600; }
+.ve-cost { font-size: 11px; color: var(--ink-soft); }
+
 /* 语言切换 / 窄屏兜底 */
 @media (max-width: 480px) {
   .vip-panel-body { padding: 14px 13px 18px; }
   .vip-task-item { gap: 8px; }
   .vip-task-btn { min-width: 56px; padding: 6px 8px; }
+  .vip-exchange-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+
+
+/* ============ 面包等级（复用 VIP 组件，只补差异） ============ */
+/* 【新增】20261118：面包等级面板不另造皮肤，直接用 VIP 的
+   vip-level-box / vip-bar-track / vip-checkin-btn / vip-task-item / vip-rights-list，
+   这里只补 VIP 里没有的两处小样式 + 进度条显示缺陷修复。 */
+
+
+
+/* ---------- 进度条适配修复（VIP 面板 + 面包面板共用） ---------- */
+/* 1) 轨道留出 2px 内边距，填充条不会贴着边框，满格时也不会被圆角切出怪形状 */
+.vip-bar-track { padding: 2px; height: 16px; }
+/* 2) 填充条给一个最小宽度，进度极低时也看得见，而不是一条白缝 */
+.vip-bar-fill { min-width: 6px; }
+/* 3) 两端刻度：小屏不挤成一行，允许换行且不顶到边 */
+.vip-bar-scale { gap: 8px; flex-wrap: wrap; font-size: 10.5px; line-height: 1.4; }
+
+@media (max-width: 480px) {
+  .vip-bar-scale { font-size: 10px; }
+}
+/* 进度为 0 时不显示最小宽度的小圆点 */
+.vip-bar-fill.empty { min-width: 0; }

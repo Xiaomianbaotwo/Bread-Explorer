@@ -2,7 +2,10 @@
    面包浏览器 · 04-modals.css
    ========================================================= */
 
-.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+/* 【修改】20261118：统一层级。原来 .overlay 只有 60，而开发者面板是 999、搜索下拉是 999、
+   天气弹窗 999/10000，导致「弹窗被别的界面盖住」。
+   现在的约定：普通内容 0~99 < 浮层控件（天气卡片 / 搜索下拉）< 开发者面板 900 < 所有弹窗 1000 < 提示 toast 10000 */
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
 .overlay.show { display: flex; }
 
 .modal { 
@@ -137,17 +140,68 @@ body.dark .font-selector-group { background: rgba(255,255,255,0.03); }
 .theme-shop-item .title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
 .theme-shop-item .price { font-size: 11px; color: var(--accent); }
 
+/* =========================================================
+   【修改】20261119：开发者面板改为「居中大面板」
+   - 横向 92vw（上限 1200px），纵向 88vh，占满大部分屏幕
+   - 所有按钮平铺，不再分组；超出高度时面板内部滚动
+   - 背景加半透明遮罩，视觉上从"侧边小窗"变成"控制台"
+   ========================================================= */
 #devPanel {
-  position: fixed; top: 80px; right: 30px; width: 300px;
-  background: var(--bg1); border: 2px solid #e74c3c; border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3); padding: 16px; z-index: 999;
-  display: none; flex-direction: column; gap: 10px; animation: rise 0.3s;
+  position: fixed; inset: 0; z-index: 900;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 16px;
 }
 #devPanel.show { display: flex; }
-#devPanel h4 { text-align: center; color: #e74c3c; font-size: 16px; margin-bottom: 4px; }
+
+.dev-modal {
+  width: 92vw; max-width: 1200px;
+  height: 88vh; max-height: 88vh;
+  background: var(--bg1); border: 2px solid #e74c3c; border-radius: 18px;
+  box-shadow: 0 24px 80px rgba(231, 76, 60, 0.35);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 12px;
+  animation: rise 0.25s; overflow: hidden;
+}
+.dev-modal h4 {
+  flex: none; margin: 0; text-align: center;
+  color: #e74c3c; font-size: 18px; letter-spacing: 1px;
+}
+
+/* 按钮平铺区：自动列数，窗口越宽列数越多；高度不够就内部滚动 */
+.dev-body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px; align-content: start;
+  padding: 2px 6px 2px 2px;
+}
+.dev-body .btn {
+  width: 100%; min-height: 52px; padding: 10px;
+  font-size: 13.5px; line-height: 1.3;
+  white-space: normal; word-break: break-word;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+}
+
+/* 保留旧的两列网格样式，避免其它地方引用时失效 */
 .dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .dev-grid .btn { padding: 8px; font-size: 13px; }
-.dev-btn-close { background: #e74c3c; color: #fff; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; padding: 10px; transition: 0.2s; margin-top: 4px; }
+
+/* 窄屏：面板更贴边、按钮改两列 */
+@media (max-width: 760px) {
+  #devPanel { padding: 8px; }
+  .dev-modal { width: 96vw; height: 92vh; padding: 14px; }
+  .dev-body { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dev-body .btn { min-height: 46px; font-size: 12.5px; }
+}
+@media (max-width: 420px) {
+  .dev-body { grid-template-columns: 1fr; }
+}
+
+.dev-btn-close {
+  flex: none; background: #e74c3c; color: #fff; font-weight: bold;
+  border-radius: 10px; border: none; cursor: pointer; padding: 12px;
+  transition: 0.2s; font-size: 14px;
+}
 .dev-btn-close:hover { background: #c0392b; }
 
 /* ★ 新增：字体预览区样式 */

@@ -91,6 +91,21 @@
           historyCleared: "历史记录已清空",
           addLabel: "添加",
           editTooltip: "编辑站点",
+          /* 【新增】面包篮容量 / 导入导出（20261117） */
+          counter: "已用 {{used}} / {{limit}}",
+          counterUnlimited: "已用 {{used}} · 不限量",
+          limitReached: "面包篮已满（上限 {{limit}} 个），升级 VIP / SVIP 可扩容",
+          importBtn: "导入书签",
+          importDone: "已导入 {{added}} 个站点",
+          importPartial: "已导入 {{added}} 个，另有 {{skipped}} 个超出上限 {{limit}}",
+          importNone: "没有可导入的新站点（可能都已经在面包篮里了）",
+          importFailed: "书签文件解析失败，请选择浏览器导出的 .html 文件",
+          exportJsonBtn: "导出 JSON",
+          exportJsonDone: "已导出 {{count}} 个站点（JSON 备份）",
+          exportHtmlBtn: "导出书签",
+          exportHtmlDone: "已导出 {{count}} 个站点（书签 HTML）",
+          exportHtmlVipOnly: "导出书签文件是 VIP / SVIP 专属功能",
+          exportHtmlTip: "VIP / SVIP 可导出为浏览器书签格式",
   };
 
   window.__BB_I18N.zh['engines'] = { quark: '夸克', bing: '必应', google: 'Google', deepseek: 'DeepSeek', bili: 'B站', github: 'GitHub' };
@@ -103,15 +118,38 @@
           ]
   };
 
+  window.__BB_I18N.zh['layout'] = {
+          edit: '编辑布局', editing: '编辑中', editTitle: '编辑布局（Beta）',
+          reset: '重置布局', resetHint: '按 H 恢复默认', resetDone: '布局已重置',
+          toolbox: '布局工具箱', addClock: '石英钟', addText: '自定义文字',
+          copy: '复制选中', front: '置顶', back: '置底',
+          restorePos: '恢复位置', delete: '删除选中',
+          uniformScale: '等比例缩放', uniformOn: '等比例缩放已开启', uniformOff: '等比例缩放已关闭，改为自由缩放',
+          toolboxHint: '拖动按 8px 网格吸附，按住 Alt 可自由移动；选中后拖四角缩放',
+          onTip: '编辑布局已开启：拖动、框选、缩放；按 H 恢复默认',
+          offTip: '布局已保存',
+          selectFirst: '请先选中一个元素',
+          frontDone: '已置顶', backDone: '已置底',
+          copyDone: '已复制一个视觉副本',
+          restorePosDone: '已恢复选中元素的位置',
+          deleteDone: '已删除选中组件',
+          deleteCore: '已隐藏选中元素，按 H 可恢复',
+          deleteMixed: '已删除组件；页面元素已隐藏，按 H 可恢复',
+          clockAdded: '已添加石英钟', textAdded: '已添加自定义文字',
+          textEmpty: '文字为空，已取消',
+          textPrompt: '输入要放在页面上的文字：',
+          defaultText: '自定义文字'
+  };
+
   window.__BB_I18N.zh['date'] = { year: '{{y}} 年 {{m}} 月 {{d}} 日', weekdays: { '0': '日', '1': '一', '2': '二', '3': '三', '4': '四', '5': '五', '6': '六' } };
 
-  window.__BB_I18N.zh['header'] = { points: '积分中心', mail: '邮件中心', history: '搜索历史', theme: '切换主题', font: '切换字体', user: '用户中心', darkMode: '切换日/夜模式', toolbox: '更多工具' };
+  window.__BB_I18N.zh['header'] = { points: '积分兑换商城', mail: '邮件中心', history: '搜索历史', theme: '切换主题', font: '切换字体', user: '用户中心', darkMode: '切换日/夜模式', toolbox: '更多工具' };
 
   window.__BB_I18N.zh['search'] = { btn: '搜索' };
 
   window.__BB_I18N.zh['loading'] = {
           wakingUp: '正在唤醒系统...', preparing: '请稍候，我们正在为您准备最纯粹的面包', entering: '正在进入... 加载完成', remainingTime: '剩余 {{sec}} 秒 加载完成', loadedPercent: '已加载 {{percent}}%',
-          currentStage: '当前阶段：{{stage}}', stagePrepare: '准备启动', stageConnect: '1/2 - 连接云端金库', stageConfigSvip: 'SVIP 极速配置', stageConfigVip: 'VIP 极速配置', stageConfigNormal: '配置环境', stageConfigStep: '2/2 - {{mode}}', guestMode: '游客模式', vipSpeedup: '🚀 升级 VIP 或 SVIP 可大幅加快配置速度！',
+          currentStage: '当前阶段：{{stage}}', stagePrepare: '准备启动', stageConnect: '1/2 - 连接云端金库', stageConfigSvip: 'SVIP 极速配置', stageConfigVip: 'VIP 极速配置', stageConfigNormal: '配置环境', stageConfigStep: '2/2 - {{mode}}', guestMode: '游客模式', vipSpeedup: '🚀 升级 VIP 或 SVIP 可大幅加快配置速度！', breadSpeedup: '🍞 面包等级 Lv{{level}} 已在为你提速，继续升级还能再快一点！', breadSpeedupMax: '🍞 面包等级 Lv{{level}} 已满级，已在为你提供最高等级提速！',
           phase1_7_1: '[1/7] 建立加密连接...', phase1_7_2: '[2/7] 强校验身份...', phase1_7_3: '[3/7] 读取资产...', phase1_7_4: '[4/7] 同步偏好设置...', phase1_7_5: '[5/7] 同步资料...', phase1_7_6: '[6/7] 核对数据...', phase1_7_7: '[7/7] 等待握手协议...',
           phase1_6_1: '[1/6] 配置环境...', phase1_6_2: '[2/6] 加载主题...', phase1_6_3: '[3/6] 挂载特效...', phase1_6_4: '[4/6] 注入粒子...', phase1_6_5: '[5/6] 唤醒面包房...', phase1_6_6: '[6/6] 即将进入！', phaseGuest: '[1/1] 正在进入游客模式...',
           connectFailed: '连接云端失败', connectFailedDesc: '由于您未登录，或网络无法连接，云端服务暂时不可用。请检查网络或刷新重试。', retry: '重新连接云端', localMode: '进入离线本地模式', localModeBlock: '⚠️ 本地模式处于开发者测试专属使用内容，普通用户暂不可用。'
@@ -220,6 +258,21 @@
           historyCleared: "History cleared",
           addLabel: "Add",
           editTooltip: "Edit site",
+          /* 【新增】basket capacity / import & export (20261117) */
+          counter: "{{used}} / {{limit}} used",
+          counterUnlimited: "{{used}} used · unlimited",
+          limitReached: "Basket is full ({{limit}} max). Upgrade to VIP / SVIP for more slots",
+          importBtn: "Import bookmarks",
+          importDone: "Imported {{added}} sites",
+          importPartial: "Imported {{added}} sites, {{skipped}} skipped over the {{limit}} limit",
+          importNone: "Nothing new to import (they may already be in your basket)",
+          importFailed: "Failed to parse the bookmark file — please pick a .html exported by your browser",
+          exportJsonBtn: "Export JSON",
+          exportJsonDone: "Exported {{count}} sites (JSON backup)",
+          exportHtmlBtn: "Export bookmarks",
+          exportHtmlDone: "Exported {{count}} sites (bookmark HTML)",
+          exportHtmlVipOnly: "Bookmark export is a VIP / SVIP feature",
+          exportHtmlTip: "VIP / SVIP can export in browser bookmark format",
   };
 
   window.__BB_I18N.en['engines'] = { quark: 'Quark', bing: 'Bing', google: 'Google', deepseek: 'DeepSeek', bili: 'Bilibili', github: 'GitHub' };
@@ -232,15 +285,38 @@
           ]
   };
 
+  window.__BB_I18N.en['layout'] = {
+          edit: 'Edit Layout', editing: 'Editing', editTitle: 'Edit Layout (Beta)',
+          reset: 'Reset Layout', resetHint: 'Press H to reset', resetDone: 'Layout reset',
+          toolbox: 'Layout Toolbox', addClock: 'Quartz Clock', addText: 'Custom Text',
+          copy: 'Copy Selected', front: 'Bring to Front', back: 'Send to Back',
+          restorePos: 'Restore Position', delete: 'Delete Selected',
+          uniformScale: 'Uniform Scale', uniformOn: 'Uniform scaling enabled', uniformOff: 'Uniform scaling off; free scaling enabled',
+          toolboxHint: 'Drag snaps to an 8px grid; hold Alt for free movement. Drag corners to resize.',
+          onTip: 'Edit mode on: drag, box-select, resize; press H to reset',
+          offTip: 'Layout saved',
+          selectFirst: 'Select an element first',
+          frontDone: 'Brought to front', backDone: 'Sent to back',
+          copyDone: 'Visual copy created',
+          restorePosDone: 'Selected element position restored',
+          deleteDone: 'Selected component deleted',
+          deleteCore: 'Selected element hidden; press H to restore',
+          deleteMixed: 'Components deleted; page elements hidden, press H to restore',
+          clockAdded: 'Quartz clock added', textAdded: 'Custom text added',
+          textEmpty: 'Text is empty, cancelled',
+          textPrompt: 'Enter the text to place on the page:',
+          defaultText: 'Custom text'
+  };
+
   window.__BB_I18N.en['date'] = { year: '{{m}}/{{d}}/{{y}}', weekdays: { '0': 'Sun', '1': 'Mon', '2': 'Tue', '3': 'Wed', '4': 'Thu', '5': 'Fri', '6': 'Sat' } };
 
-  window.__BB_I18N.en['header'] = { points: 'Points Center', mail: 'Mail Center', history: 'Search History', theme: 'Change Theme', font: 'Change Font', user: 'User Center', darkMode: 'Toggle Dark Mode', toolbox: 'More Tools' };
+  window.__BB_I18N.en['header'] = { points: 'Points Shop', mail: 'Mail Center', history: 'Search History', theme: 'Change Theme', font: 'Change Font', user: 'User Center', darkMode: 'Toggle Dark Mode', toolbox: 'More Tools' };
 
   window.__BB_I18N.en['search'] = { btn: 'Search' };
 
   window.__BB_I18N.en['loading'] = {
           wakingUp: 'Waking up system...', preparing: 'Please wait, we are preparing the purest bread for you', entering: 'Entering... Loaded', remainingTime: '{{sec}}s remaining', loadedPercent: 'Loaded {{percent}}%',
-          currentStage: 'Stage: {{stage}}', stagePrepare: 'Preparing', stageConnect: '1/2 - Connecting to Vault', stageConfigSvip: 'SVIP Speed Config', stageConfigVip: 'VIP Speed Config', stageConfigNormal: 'Configuring Env', stageConfigStep: '2/2 - {{mode}}', guestMode: 'Guest Mode', vipSpeedup: '🚀 Upgrade VIP/SVIP to speed up configuration!',
+          currentStage: 'Stage: {{stage}}', stagePrepare: 'Preparing', stageConnect: '1/2 - Connecting to Vault', stageConfigSvip: 'SVIP Speed Config', stageConfigVip: 'VIP Speed Config', stageConfigNormal: 'Configuring Env', stageConfigStep: '2/2 - {{mode}}', guestMode: 'Guest Mode', vipSpeedup: '🚀 Upgrade VIP/SVIP to speed up configuration!', breadSpeedup: '🍞 Bread Level {{level}} is already speeding you up — level up for more!', breadSpeedupMax: '🍞 Bread Level {{level}} is maxed out — you already have the maximum level speed boost!',
           phase1_7_1: '[1/7] Encrypted connection...', phase1_7_2: '[2/7] Verifying identity...', phase1_7_3: '[3/7] Loading assets...', phase1_7_4: '[4/7] Syncing prefs...', phase1_7_5: '[5/7] Syncing profile...', phase1_7_6: '[6/7] Checking data...', phase1_7_7: '[7/7] Waiting for handshake...',
           phase1_6_1: '[1/6] Config env...', phase1_6_2: '[2/6] Load themes...', phase1_6_3: '[3/6] Mount effects...', phase1_6_4: '[4/6] Inject particles...', phase1_6_5: '[5/6] Wake up bakery...', phase1_6_6: '[6/6] Entering!', phaseGuest: '[1/1] Entering guest mode...',
           connectFailed: 'Cloud Connection Failed', connectFailedDesc: 'Cloud service is temporarily unavailable due to not logged in or network issues. Please check network or refresh.', retry: 'Reconnect', localMode: 'Enter Offline Mode', localModeBlock: '⚠️ Local mode is for developer testing only, unavailable for regular users.'

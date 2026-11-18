@@ -136,6 +136,18 @@ function applyFont(enFontId, zhFontId, u) {
 
 function applyTheme() {
   const body = document.body;
+
+  /* 【新增】20261118：主题切换过渡。
+     只在「切换」时给 body 挂 .theme-switching（首屏不播），
+     强制一次 reflow 让浏览器记住旧配色，再换主题类，颜色就会柔和渐变。
+     过渡规则写在 css/07-ui-tokens.css。 */
+  const animate = !!window.__themeBooted;
+  if (animate) {
+    body.classList.add('is-theme-switching');
+    void body.offsetWidth;
+  }
+  clearTimeout(window.__themeSwitchTimer);
+
   body.classList.remove('dark');
   Array.from(body.classList).forEach(c => {
     if (c.startsWith('theme-')) body.classList.remove(c);
@@ -144,20 +156,44 @@ function applyTheme() {
   if (theme === 'dark') body.classList.add('dark');
   
   if (currentTheme && currentTheme !== 'default') {
-    // 提取基础主题名，让 flower-max、spring-max 都能自动适配基础配色
-    let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
+    // 提取基础主题名，让 flower-max、spring-max、winter-ultimate 都能自动适配基础配色
+    let baseTheme = currentTheme.replace('-plus', '').replace('-max', '').replace('-ultimate', '');
     
     // 面包原野系列默认使用 :root 配色，不需要额外加 theme-default
     if (baseTheme !== 'default') {
       body.classList.add('theme-' + baseTheme);
     }
+
+    /* 【新增】20261119：Plus / Max / Ultimate 档位额外挂一层类，
+       让「蜂蜜工坊」「冬日雪境」这类主题可以按档位换更深一层的配色；
+       其它主题没有对应样式，不受影响。 */
+    if (currentTheme.endsWith('-plus')) body.classList.add('theme-tier-plus');
+    else if (currentTheme.endsWith('-max')) body.classList.add('theme-tier-max');
+    else if (currentTheme.endsWith('-ultimate')) body.classList.add('theme-tier-ultimate');
   }
   
   $('#btnTheme').textContent = theme === 'dark' ? '☀️' : '🌙';
-  $('#breadBg').innerHTML = '';
-  for (let i = 0; i < 15; i++) {
-    if (typeof spawnBread === 'function') spawnBread();
+  if (typeof refreshEmojiBackground === 'function') refreshEmojiBackground();
+  else {
+    $('#breadBg').innerHTML = '';
+    for (let i = 0; i < 15; i++) {
+      if (typeof spawnBread === 'function') spawnBread();
+    }
   }
+
+  /* 【新增】20261119：冬日雪境 Plus 以上同步真实雪层 */
+  if (window.WinterFX && typeof window.WinterFX.sync === 'function') {
+    try { window.WinterFX.sync(); } catch (err) { console.warn('[冬日雪境] 同步失败', err); }
+  }
+
+  /* 【修改】20261118：过渡延长到 0.8s，定时器同步延后到 900ms，
+     避免背景渐变还在补间时过渡类就被撤掉。 */
+  if (animate) {
+    window.__themeSwitchTimer = setTimeout(() => {
+      document.body.classList.remove('is-theme-switching');
+    }, 900);
+  }
+  window.__themeBooted = true;
 }
 
 function updatePreviewBoxes() {

@@ -6,7 +6,7 @@
   <title data-i18n="app.title">面包浏览器</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>%F0%9F%8D%9E</text></svg>">
   
-  <link rel="stylesheet" href="css/01-vars.css">
+  <link rel="stylesheet" href="css/01-vars.css?v=20261119-season1">
   <link rel="stylesheet" href="css/02-base.css">
   <link rel="stylesheet" href="css/03-layout.css">
   <link rel="stylesheet" href="css/04-modals.css">
@@ -24,6 +24,12 @@
   <link rel="stylesheet" href="modules/weather/css/01-weather.css">
 <!-- 【新增】VIP 等级面板样式 -->
 <link rel="stylesheet" href="modules/vip-level/css/01-vip.css">
+  <link rel="stylesheet" href="modules/bread-level/css/01-bread.css">
+  <link rel="stylesheet" href="modules/point-center/css/01-point.css">
+  <!-- 【新增】20261118：视觉令牌（统一圆角/阴影/滚动条/主题过渡），必须放在所有模块样式之后 -->
+  <link rel="stylesheet" href="css/07-ui-tokens.css">
+  <!-- 【新增】20261118：编辑布局（Beta）开关与拖拽高亮样式 -->
+  <link rel="stylesheet" href="css/08-layout-edit.css">
   
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./libs/Sortable.min.js"></script>
@@ -93,25 +99,25 @@
 
   <!-- ================= 主界面头部 ================= -->
   <header class="fade-in" style="display: flex; justify-content: space-between; align-items: flex-start; padding: 20px 30px; position: relative; z-index: 10;">
-    <div class="logo" style="display: flex; align-items: flex-start;">
-      <span class="b" style="font-size: 28px; display: inline-block; animation: bob 3s ease-in-out infinite; margin-top: 2px;">🍞</span>
+    <div class="logo" id="brandLogo" style="display: flex; align-items: flex-start;">
+      <span class="b" id="brandBreadEmoji" style="font-size: 28px; display: inline-block; animation: bob 3s ease-in-out infinite; margin-top: 2px;">🍞</span>
       <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 10px;">
           <div style="display: flex; align-items: center; gap: 8px;">
               <div style="font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: 1px; color: var(--ink);">
-                  <span data-i18n="app.name">面包浏览器</span>
+                  <span id="brandTitle" data-i18n="app.name">面包浏览器</span>
               </div>
               <span id="readme-version-badge" style="font-size: 11px; background: var(--card-border); color: var(--ink); padding: 2px 6px; border-radius: 6px; font-weight: bold; border: 1px solid var(--ink-soft); line-height: 1;">
                   v1.5.1
               </span>
           </div>
-          <span style="font-size: 12px; font-weight: 400; color: var(--ink-soft); margin-top: 4px; letter-spacing: 0.5px;">
+          <span id="brandSubtitle" style="font-size: 12px; font-weight: 400; color: var(--ink-soft); margin-top: 4px; letter-spacing: 0.5px;">
               Bread Browser
           </span>
       </div>
     </div>
     
     <div class="header-actions">
-      <button class="icon-btn" id="btnPoints" title="积分中心" data-i18n-title="header.points">🎁 <span id="pointsDisplay" style="font-size:14px; font-weight:bold; margin-left:4px;">0</span></button>
+      <button class="icon-btn" id="btnPoints" title="积分兑换商城" data-i18n-title="header.points">🎁 <span id="pointsDisplay" style="font-size:14px; font-weight:bold; margin-left:4px;">0</span></button>
       <button class="icon-btn" id="btnMail" title="邮件中心" data-i18n-title="header.mail" style="display:none;">📧 <span id="mailDot"></span></button>
       <button class="icon-btn" id="btnHistory" title="搜索历史" data-i18n-title="header.history">🕒</button>
       <button class="icon-btn" id="btnThemeSelect" title="切换主题" data-i18n-title="header.theme">🎨</button>
@@ -124,39 +130,64 @@
       <button class="icon-btn" id="btnTheme" title="切换日/夜模式" data-i18n-title="header.darkMode">🌙</button>
       <button class="icon-btn" id="btnToolbox" title="更多工具" data-i18n-title="header.toolbox">🛠️</button>
     </div>
+
+    <!-- 编辑布局开关：单独放在右上角按钮排的下面，不占同一行 -->
+    <div id="layoutEditDock">
+      <button id="btnLayoutEdit" class="layout-edit-switch" type="button"
+              role="switch" aria-checked="false" aria-pressed="false"
+              data-i18n-title="layout.editTitle">
+        <span class="layout-edit-dot"></span>
+        <span class="layout-edit-text" data-i18n="layout.edit">编辑布局</span>
+        <span class="layout-edit-beta">Beta</span>
+      </button>
+      <button id="btnLayoutReset" class="layout-edit-reset" type="button"
+              title="按 H 恢复默认" data-i18n-title="layout.resetHint"
+              data-i18n="layout.reset">重置布局</button>
+    </div>
   </header>
 
-  <!-- 开发者控制面板（已接入 data-i18n，中英双语） -->
+  <!-- 开发者控制面板
+       【修改】20261119：改成居中大面板 ——
+       横向占屏 92%（上限 1200px），纵向占 88%，所有按钮平铺、不分组，超出的部分内部滚动 -->
   <div id="devPanel">
-    <h4 data-i18n="dev.panelTitle">🛠️ 开发者控制面板</h4>
-    <button class="btn ghost" id="btnDevAddDay" data-i18n="dev.btnAddDay">🛠️ 模拟增加注册时长</button>
-    <button class="btn ghost" id="btnDevSetDay" data-i18n="dev.btnSetDay">🛠️ 模拟设置注册时长</button>
-    <button class="btn ghost" id="btnDevSetPoints" data-i18n="dev.btnSetPoints" style="color:#e67e22; border-color:#e67e22;">🪙 设置用户积分</button>
-    <div class="dev-grid">
-      <button class="btn ghost" id="btnDevSetNone" data-i18n="dev.btnSetNone">设为普通用户</button>
-      <button class="btn ghost" id="btnDevSetVip" data-i18n="dev.btnSetVip" style="color:#d35400; border-color:#d35400;">设为 VIP</button>
-      <button class="btn ghost" id="btnDevSetSvip" data-i18n="dev.btnSetSvip" style="color:#8e44ad; border-color:#8e44ad;">设为 SVIP</button>
-      <button class="btn ghost" id="btnDevSetForever" data-i18n="dev.btnSetForever" style="color:#e74c3c; border-color:#e74c3c;">永久 SVIP</button>
+    <div class="dev-modal">
+      <h4 data-i18n="dev.panelTitle">🛠️ 开发者控制面板</h4>
+
+      <div class="dev-body">
+        <button class="btn ghost" id="btnDevAddDay" data-i18n="dev.btnAddDay">🛠️ 模拟增加注册时长</button>
+        <button class="btn ghost" id="btnDevSetDay" data-i18n="dev.btnSetDay">🛠️ 模拟设置注册时长</button>
+        <button class="btn ghost" id="btnDevSetPoints" data-i18n="dev.btnSetPoints" style="color:#e67e22; border-color:#e67e22;">🪙 设置用户积分</button>
+
+        <button class="btn ghost" id="btnDevSetNone" data-i18n="dev.btnSetNone">设为普通用户</button>
+        <button class="btn ghost" id="btnDevSetVip" data-i18n="dev.btnSetVip" style="color:#d35400; border-color:#d35400;">设为 VIP</button>
+        <button class="btn ghost" id="btnDevSetSvip" data-i18n="dev.btnSetSvip" style="color:#8e44ad; border-color:#8e44ad;">设为 SVIP</button>
+        <button class="btn ghost" id="btnDevSetForever" data-i18n="dev.btnSetForever" style="color:#e74c3c; border-color:#e74c3c;">永久 SVIP</button>
+
+        <button class="btn ghost" id="btnDevSetStar" data-i18n="dev.btnSetStar" style="color:#8e44ad; border-color:#8e44ad;">⭐ 设置星光值</button>
+        <button class="btn ghost" id="btnDevAddStar" data-i18n="dev.btnAddStar" style="color:#9b59b6; border-color:#9b59b6;">✨ 增加星光值</button>
+        <button class="btn ghost" id="btnDevSetLevel" data-i18n="dev.btnSetLevel" style="color:#d35400; border-color:#d35400;">🎖️ 设置 (S)VIP 等级</button>
+
+        <button class="btn ghost" id="btnDevSetBake" data-i18n="dev.btnSetBake" style="color:#b9770e; border-color:#b9770e;">🍞 设置烘焙度</button>
+        <button class="btn ghost" id="btnDevAddBake" data-i18n="dev.btnAddBake" style="color:#d68910; border-color:#d68910;">🥖 增加烘焙度</button>
+        <button class="btn ghost" id="btnDevSetBreadLevel" data-i18n="dev.btnSetBreadLevel" style="color:#af7ac5; border-color:#af7ac5;">📈 设置面包等级</button>
+
+        <button class="btn ghost" id="btnDevManageCodes" data-i18n="dev.btnManageCodes" style="color:#00bcd4; border-color:#00bcd4;">🎫 添加自定义兑换码</button>
+        <button class="btn ghost" id="btnDevGenCode" data-i18n="dev.btnGenCode" style="color:#27ae60; border-color:#27ae60;">🎲 生成兑换码</button>
+        <button class="btn ghost" id="btnDevStartRain" data-i18n="dev.btnStartRain" style="color:#e91e63; border-color:#e91e63;">🧧 立即触发红包雨</button>
+        <button class="btn ghost" id="btnDevAutoRain" data-i18n="dev.btnAutoRain" style="color:#9b59b6; border-color:#9b59b6;">🤖 自动领取红包(0.7秒)</button>
+
+        <button class="btn ghost" id="btnDevRunJs" data-i18n="dev.btnRunJs" style="color:#3498db; border-color:#3498db;">💻 执行自定义代码(前端)</button>
+        <button class="btn ghost" id="btnDevRunSql" data-i18n="dev.btnRunSql" style="color:#9b59b6; border-color:#9b59b6;">📡 执行自定义代码(后端)</button>
+        <button class="btn ghost" id="btnDevRunAll" data-i18n="dev.btnRunAll" style="color:#e67e22; border-color:#e67e22;">🚀 执行自定义代码(前端+后端)</button>
+      </div>
+
+      <button class="dev-btn-close" id="btnDevClose" data-i18n="dev.btnClose">关闭开发者模式</button>
     </div>
-    <!-- 【新增】星光值 / 等级调试（本轮新增） -->
-    <div class="dev-grid">
-      <button class="btn ghost" id="btnDevSetStar" data-i18n="dev.btnSetStar" style="color:#8e44ad; border-color:#8e44ad;">⭐ 设置星光值</button>
-      <button class="btn ghost" id="btnDevAddStar" data-i18n="dev.btnAddStar" style="color:#9b59b6; border-color:#9b59b6;">✨ 增加星光值</button>
-    </div>
-    <button class="btn ghost" id="btnDevSetLevel" data-i18n="dev.btnSetLevel" style="color:#d35400; border-color:#d35400;">🎖️ 设置 (S)VIP 等级</button>
-    <button class="btn ghost" id="btnDevManageCodes" data-i18n="dev.btnManageCodes" style="color:#00bcd4; border-color:#00bcd4;">🎫 添加自定义兑换码</button>
-    <button class="btn ghost" id="btnDevGenCode" data-i18n="dev.btnGenCode" style="color:#27ae60; border-color:#27ae60;">🎲 生成兑换码</button>
-    <button class="btn ghost" id="btnDevStartRain" data-i18n="dev.btnStartRain" style="color:#e91e63; border-color:#e91e63;">🧧 立即触发红包雨</button>
-    <button class="btn ghost" id="btnDevAutoRain" data-i18n="dev.btnAutoRain" style="color:#9b59b6; border-color:#9b59b6;">🤖 自动领取红包(0.7秒)</button>
-    <button class="btn ghost" id="btnDevRunJs" data-i18n="dev.btnRunJs" style="color:#3498db; border-color:#3498db;">💻 执行自定义代码(前端)</button>
-    <button class="btn ghost" id="btnDevRunSql" data-i18n="dev.btnRunSql" style="color:#9b59b6; border-color:#9b59b6;">📡 执行自定义代码(后端)</button>
-    <button class="btn ghost" id="btnDevRunAll" data-i18n="dev.btnRunAll" style="color:#e67e22; border-color:#e67e22;">🚀 执行自定义代码(前端+后端)</button>
-    <button class="dev-btn-close" id="btnDevClose" data-i18n="dev.btnClose">关闭开发者模式</button>
   </div>
 
   <!-- ================= 主内容区 ================= -->
   <main>
-    <div class="fade-in" style="animation-delay: .05s">
+    <div class="fade-in" id="clockBlock" style="animation-delay: .05s">
       <h1 class="clock" id="clock"></h1>
       <p class="date-line" id="dateLine"></p>
     </div>
@@ -172,7 +203,17 @@
       <div class="engine-menu" id="engineMenu"></div>
     </div>
 
-    <p class="sites-title fade-in" style="animation-delay: .45s" data-i18n="home.sitesTitle">🧺 我的面包篮（可拖拽排序，悬停删除）</p>
+    <!-- 【修改】面包篮标题行：标题 + 容量计数 + 导入/导出（20261117） -->
+    <div class="sites-head fade-in" id="sitesHead" style="animation-delay: .45s">
+      <span class="sites-title" data-i18n="home.sitesTitle">🧺 我的面包篮（可拖拽排序，悬停删除）</span>
+      <span class="sites-tools">
+        <span class="sites-counter" id="siteCounter"></span>
+        <button class="sites-tool" id="btnSiteImport" data-i18n="sites.importBtn">导入书签</button>
+        <button class="sites-tool" id="btnSiteExportJson" data-i18n="sites.exportJsonBtn">导出 JSON</button>
+        <button class="sites-tool vip" id="btnSiteExportHtml" data-i18n="sites.exportHtmlBtn">导出书签</button>
+      </span>
+      <input type="file" id="siteImportFile" accept=".html,.htm" hidden>
+    </div>
     <div class="sites" id="sitesGrid"></div>
   </main>
 
@@ -304,6 +345,74 @@
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwThemeColor">🎨 适配主题颜色：</span>
           <input type="checkbox" id="fwThemeColorToggle" class="bb-switch">
         </div>
+        <!-- 【新增】20261119：烟花时段：白天 / 夜间 / 都放 -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding-top: 12px; border-top:1px dashed rgba(150,150,150,0.25); margin-top:10px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwTimeMode">🕒 烟花时段：</span>
+          <select id="fwTimeMode" style="min-width:150px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:13px; outline:none;">
+            <option value="both" data-i18n="modals.fwTimeBoth">白天 / 夜间都放</option>
+            <option value="night" data-i18n="modals.fwTimeNight">仅夜间模式</option>
+            <option value="day" data-i18n="modals.fwTimeDay">仅白天模式</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 【新增】20261119：背景 emoji 漂浮方向 -->
+      <div id="emojiDirArea" style="margin-top: 14px; background: rgba(0,0,0,0.04); padding: 13px 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.emojiDir">🌀 背景 Emoji 漂浮方向：</span>
+          <select id="emojiDirSelect" style="flex:1; max-width:220px; padding:8px 10px; border-radius:9px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:13px; outline:none;">
+            <option value="random" data-i18n="modals.emojiDirRandom">随机方向</option>
+            <option value="up" data-i18n="modals.emojiDirUp">从下往上</option>
+            <option value="down" data-i18n="modals.emojiDirDown">从上往下</option>
+            <option value="dr" data-i18n="modals.emojiDirDR">左上 → 右下</option>
+            <option value="dl" data-i18n="modals.emojiDirDL">右上 → 左下</option>
+            <option value="ur" data-i18n="modals.emojiDirUR">左下 → 右上</option>
+            <option value="ul" data-i18n="modals.emojiDirUL">右下 → 左上</option>
+          </select>
+        </div>
+        <!-- 【新增】20261119：背景 Emoji 出现频率（只影响数量，不触发云端同步） -->
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.emojiFreq">✨ Emoji 出现频率：</span>
+          <input type="number" id="emojiFreqInput" min="0.5" max="2" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+      </div>
+
+      <!-- 【新增】20261119：问候语 / 心情短句跟随主题 -->
+      <div id="homeTextThemeArea" style="margin-top: 14px; background: rgba(0,0,0,0.04); padding: 13px 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.homeTextThemeFollow">🌸 问候语 / 心情短句跟随主题：</span>
+          <input type="checkbox" id="homeTextThemeToggle" class="bb-switch">
+        </div>
+        <div style="font-size:12px; color:var(--ink-soft); margin-top:7px; line-height:1.5;" data-i18n="modals.homeTextThemeHint">勾选后使用当前主题专属词库（同系列各档共用），切换间隔 25 秒；不勾选使用通用词库，间隔 15 秒。</div>
+      </div>
+
+
+      <div id="winterConfigArea" style="display:none; margin-top: 14px; background: rgba(0,0,0,0.04); padding: 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <h4 style="font-size:14px; margin-bottom:10px; color:var(--accent);" data-i18n="modals.winterFxTitle">❄️ 冬日雪境 · 雪效设置</h4>
+        <div style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;" id="winterSnowState"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowSpeed">❄️ 下雪速度：</span>
+          <input type="number" id="winterSnowSpeed" min="0.2" max="2.5" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowWind">🌬️ 风力：</span>
+          <input type="number" id="winterSnowWind" min="0" max="2" step="0.1" value="0.5" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowDir">🧭 风向：</span>
+          <select id="winterSnowDir" style="width:120px; padding:7px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:13px; outline:none;">
+            <option value="right" data-i18n="modals.winterSnowRight">向右吹</option>
+            <option value="left" data-i18n="modals.winterSnowLeft">向左吹</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowDensity">❄️ 雪花频率：</span>
+          <input type="number" id="winterSnowDensity" min="0.2" max="2.5" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowForce">🎬 强制下雪（预览）：</span>
+          <input type="checkbox" id="winterSnowForce" class="bb-switch">
+        </div>
       </div>
       
       <div class="modal-actions" style="justify-content: center; margin-top: 24px; width: 100%;">
@@ -419,7 +528,7 @@
 
   <div class="overlay" id="pointsOverlay">
     <div class="modal" style="width:min(460px, 100%);">
-      <h3 data-i18n="modals.pointsTitle">🎁 积分中心</h3>
+      <h3 data-i18n="modals.pointsTitle">🎁 积分兑换商城</h3>
       <div class="points-header"><span data-i18n="modals.currentPoints">当前可用积分：</span><span id="shopPoints">0</span> 🪙</div>
       <div style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:12px;" data-i18n="modals.pointsDesc">每日通过邮件发送，月底清零。VIP享9折，SVIP享7折。</div>
       <div style="max-height: 320px; overflow-y: auto; padding-right:4px;">
@@ -470,6 +579,38 @@
     </div>
   </div>
 
+  <!-- 【新增】20261118 生成兑换码固定表单：类型下拉 + 数值 + 数量，不再手输逗号格式 -->
+  <div class="overlay" id="devGenOverlay">
+    <div class="modal" style="width:min(460px, 100%); text-align:left;">
+      <h3 data-i18n="dev.genFormTitle">🎲 生成兑换码</h3>
+      <p style="font-size:12px; color:var(--ink-soft); margin-bottom:14px;" data-i18n="dev.genFormDesc">选择类型、填写数值和数量即可生成，生成结果自动复制。</p>
+
+      <label style="display:block; font-size:13px; margin-bottom:6px;" data-i18n="dev.genType">类型</label>
+      <select id="devGenType" style="width:100%; margin-bottom:12px; padding:10px 12px; border-radius:12px; border:1px solid var(--card-border); background:var(--bg1); color:var(--ink);">
+        <option value="vip" data-i18n="dev.genTypeVip">VIP（按天）</option>
+        <option value="svip" data-i18n="dev.genTypeSvip">SVIP（按天）</option>
+        <option value="points" data-i18n="dev.genTypePoint">积分 POINT</option>
+      </select>
+
+      <label style="display:block; font-size:13px; margin-bottom:6px;">
+        <span data-i18n="dev.genValue">数值</span>
+        <span id="devGenValueUnit" style="color:var(--ink-soft); font-size:12px;" data-i18n="dev.genValueDays">（天）</span>
+      </label>
+      <input type="number" id="devGenValue" min="1" step="1" value="30" style="margin-bottom:12px;">
+
+      <label style="display:block; font-size:13px; margin-bottom:6px;" data-i18n="dev.genCount">数量</label>
+      <input type="number" id="devGenCount" min="1" max="200" step="1" value="10" style="margin-bottom:12px;">
+
+      <textarea id="devGenResult" rows="5" readonly placeholder="生成结果会显示在这里 / Generated codes appear here" style="font-family:monospace; font-size:13px;"></textarea>
+
+      <div class="modal-actions" style="justify-content: space-between; gap:8px;">
+        <button class="btn ghost" id="btnDevGenCancel" data-i18n="modals.cancel">取消</button>
+        <button class="btn ghost" id="btnDevGenCopy" data-i18n="dev.genCopy">复制结果</button>
+        <button class="btn primary" id="btnDevGenRun" data-i18n="dev.genRun">生成</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="runCodeOverlay">
     <div class="modal" style="width:min(500px, 100%);">
       <h3 id="runCodeTitle" data-i18n="modals.runCodeTitle">💻 执行自定义代码(前端)</h3>
@@ -500,19 +641,24 @@
 
   <!-- ================= 脚本加载区 ================= -->
   <script src="js/01-core.js" defer></script>
-  <script src="js/02-config.js" defer></script>
+  <script src="js/02-config.js?v=20261119-season1" defer></script>
   <!-- 【新增】内测功能开关（好友系统 / 查询天气工具）：必须早于 15-tools-hub 与 modules/friend 加载 -->
   <script src="js/16-feature-flags.js" defer></script>
   <script src="js/03-ui.js" defer></script>
-  <script src="js/04-auth.js" defer></script>
+  <script src="js/04-auth.js?v=20261119-themecode3" defer></script>
+  <!-- 【新增】20261118：编辑布局（Beta）开关与自由拖拽 -->
+  <script src="js/17-layout-edit.js?v=20261119-sync2" defer></script>
   <script src="js/05-font-theme.js" defer></script>
+  <script src="js/18-winter.js" defer></script>
   <script src="js/06-sites.js" defer></script>
   <script src="js/07-mail.js" defer></script>
   <script src="js/08-points.js" defer></script>
   <script src="js/09-redpacket.js" defer></script>
-  <script src="js/10-dev.js" defer></script>
-  <script src="js/12-fireworks.js" defer></script>
-  <script src="js/11-init.js" defer></script>
+  <script src="js/10-dev.js?v=20261119-themecode5" defer></script>
+  <script src="js/12-fireworks.js?v=20261119-season3" defer></script>
+  <script src="js/19-home-text.js?v=20261119-home3" defer></script>
+  <script src="js/20-theme-home-text.js?v=20261119-theme-unified1" defer></script>
+  <script src="js/11-init.js?v=20261119-home11" defer></script>
   <script src="js/13-updater.js" defer></script>
   <!-- 【修复】i18next + 词典必须排在 14-loading.js 之前：
        否则加载页（尤其游客/未登录分支）会在 _loadT 还是占位桩时就写文案，
@@ -524,19 +670,34 @@
   <script src="modules/i18n/01-i18n-core.js" defer></script>
   <script src="modules/i18n/02-i18n-ui.js" defer></script>
   <script src="modules/i18n/03-i18n-social.js" defer></script>
-  <script src="modules/i18n/04-i18n-account.js" defer></script>
-  <script src="modules/i18n/05-i18n-system.js" defer></script>
+  <script src="modules/i18n/04-i18n-account.js?v=20261119-home10" defer></script>
+  <script src="modules/i18n/05-i18n-system.js?v=20261119-themecode2" defer></script>
   <!-- 【新增】VIP 等级体系词条（星光值）：中英成对放在同一文件，必须在 06-i18n-init 之前 -->
   <script src="modules/i18n/07-i18n-vip.js" defer></script>
+  <script src="modules/bread-level/js/06-bread-i18n.js" defer></script>
+  <script src="modules/point-center/js/05-point-i18n.js" defer></script>
   <script src="modules/i18n/06-i18n-init.js" defer></script>
-  <script src="js/14-loading.js" defer></script>
+  <script src="js/14-loading.js?v=20261119-home8" defer></script>
   <script src="js/15-tools-hub.js" defer></script>
 
   <!-- 【新增】VIP 等级成长体系（1~100 级 / 星光值 point 模型）
        顺序：01 计算内核 → 02 任务体系 → 04 等级奖励 → 03 面板 UI（UI 依赖前面三者，必须最后） -->
   <script src="modules/vip-level/js/01-vip-core.js" defer></script>
+  <!-- 【新增】20261118：云端配置（任务表 / 等级礼包表）必须在任务与礼包模块之前加载 -->
+  <script src="modules/vip-level/js/06-vip-config.js" defer></script>
   <script src="modules/vip-level/js/02-vip-task.js" defer></script>
   <script src="modules/vip-level/js/04-vip-mail-reward.js" defer></script>
+  <script src="modules/vip-level/js/05-vip-star-exchange.js" defer></script>
+  <!-- 【新增】20261118：面包等级（普通用户等级），与 VIP 等级独立并存 -->
+  <script src="modules/bread-level/js/02-bread-config.js" defer></script>
+  <script src="modules/bread-level/js/01-bread-core.js" defer></script>
+  <script src="modules/bread-level/js/03-bread-task.js" defer></script>
+  <script src="modules/bread-level/js/04-bread-ui.js" defer></script>
+  <script src="modules/bread-level/js/05-bread-mail.js" defer></script>
+  <script src="modules/point-center/js/01-point-core.js" defer></script>
+  <script src="modules/point-center/js/02-point-config.js" defer></script>
+  <script src="modules/point-center/js/03-point-task.js" defer></script>
+  <script src="modules/point-center/js/04-point-ui.js" defer></script>
   <script src="modules/vip-level/js/03-vip-ui.js" defer></script>
 
   
@@ -588,6 +749,40 @@
     <button id="btnToolIframeClose" style="position: absolute; top: 15px; right: 15px; z-index: 10; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center;">✕</button>
     <iframe id="toolIframe" src="" style="width: 100%; height: 100%; border: none; display: block;"></iframe>
   </div>
+</div>
+
+<!-- 框选矩形：编辑模式下从空白处拖动即可多选 -->
+<div id="layoutMarquee"></div>
+
+<!-- 编辑布局（Beta）工具箱：只在编辑模式显示 -->
+<div id="layoutEditToolbar">
+  <div class="let-head">
+    <span data-i18n="layout.toolbox">布局工具箱</span>
+    <span class="let-beta">Beta</span>
+  </div>
+  <div class="let-grid">
+    <button id="btnLayoutAddClock" class="let-btn" type="button">🕰️ <span data-i18n="layout.addClock">石英钟</span></button>
+    <button id="btnLayoutCopy" class="let-btn" type="button">📄 <span data-i18n="layout.copy">复制选中</span></button>
+    <button id="btnLayoutRestorePos" class="let-btn" type="button">↩️ <span data-i18n="layout.restorePos">恢复位置</span></button>
+    <button id="btnLayoutDelete" class="let-btn let-danger" type="button">🗑️ <span data-i18n="layout.delete">删除选中</span></button>
+    <button id="btnLayoutUniformScale" class="let-btn let-toggle" type="button"
+            role="switch" aria-checked="false" aria-pressed="false">
+      <span class="let-toggle-dot"></span>
+      <span data-i18n="layout.uniformScale">等比例缩放</span>
+    </button>
+    <button id="btnLayoutFront" class="let-btn" type="button">⬆️ <span data-i18n="layout.front">置顶</span></button>
+    <button id="btnLayoutBack" class="let-btn" type="button">⬇️ <span data-i18n="layout.back">置底</span></button>
+    <button id="btnLayoutToolboxReset" class="let-btn let-danger" type="button">↩️ <span data-i18n="layout.reset">重置布局</span></button>
+  </div>
+  <div class="let-hint" data-i18n="layout.toolboxHint">选中元素后拖四角缩放；按 H 恢复默认</div>
+</div>
+
+<!-- 选中元素的四角缩放手柄 -->
+<div id="layoutSelectionBox">
+  <span class="lrh lrh-nw" data-corner="nw"></span>
+  <span class="lrh lrh-ne" data-corner="ne"></span>
+  <span class="lrh lrh-sw" data-corner="sw"></span>
+  <span class="lrh lrh-se" data-corner="se"></span>
 </div>
 </body>
 </html>

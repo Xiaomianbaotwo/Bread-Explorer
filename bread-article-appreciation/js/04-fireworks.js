@@ -13,6 +13,29 @@ document.body.appendChild(fwCanvas);
 
 const fwCtx = fwCanvas.getContext('2d');
 
+/* 【新增】20261119：跟随主站「🎨 适配主题颜色」开关。
+   主站设置存在 bb-users 的个人记录里（fwThemeColor，默认 true）；
+   开启时子站烟花按当前主题的色相出烟，关闭时保持完全随机。 */
+const THEME_FW_HUES = {
+  sakura: [330, 344, 356, 300],
+  flower: [338, 320, 350, 288],
+  honey:  [42, 34, 26, 50]
+};
+
+function fwThemeColorEnabled() {
+  try {
+    const u = (typeof mainUser === 'function') ? mainUser() : null;
+    return !(u && u.fwThemeColor === false);
+  } catch (e) { return true; }
+}
+
+function themeFireworkHue() {
+  const base = String(currentTheme || 'sakura').replace('-plus', '').replace('-max', '');
+  const hues = THEME_FW_HUES[base] || THEME_FW_HUES.sakura;
+  let h = hues[Math.floor(Math.random() * hues.length)] + (Math.random() * 20 - 10);
+  return ((h % 360) + 360) % 360;
+}
+
 function resizeFwCanvas() {
   fwCanvas.width = window.innerWidth;
   fwCanvas.height = window.innerHeight;
@@ -406,7 +429,7 @@ window.launchFirework = function(startX, startY, forcedType = null) {
      sx = tx; sy = fwCanvas.height;
   }
   
-  let hue = Math.floor(Math.random() * 360);
+  let hue = fwThemeColorEnabled() ? themeFireworkHue() : Math.floor(Math.random() * 360);
   let type = forcedType || 'normal';
   
   if (currentTheme && currentTheme.includes('spring') && !forcedType) {

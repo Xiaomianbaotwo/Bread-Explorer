@@ -4,14 +4,23 @@
    ========================================================= */
 
 // ========== 弹窗控制 ==========
-function openOverlay(el) { 
-  el.classList.add('show'); 
-  document.body.classList.add('modal-open'); 
+function openOverlay(el) {
+  if (!el) return;
+  /* 【修改】20261118：部分模块关闭弹窗时会把 display:none 写进行内样式，
+     再次打开只加 .show 类压不过行内样式，弹窗就成了「开了但看不见」。
+     这里在打开时强制恢复可见，作为所有弹窗的统一兜底。 */
+  el.style.display = 'flex';
+  el.classList.add('show');
+  document.body.classList.add('modal-open');
 }
 
 function closeOverlay(el) {
+  if (!el) return;
   el.classList.remove('show');
-  if (!document.querySelector('.overlay.show')) document.body.classList.remove('modal-open');
+  /* 【修改】20261118：不能用 .overlay.show 判断，加载遮罩等元素会残留 show 类，
+     导致 body.modal-open 永远清不掉。改为判断「真正可见」的弹窗。 */
+  const anyVisible = Array.from(document.querySelectorAll('.overlay')).some(o => getComputedStyle(o).display !== 'none');
+  if (!anyVisible) document.body.classList.remove('modal-open');
   if (el.id === 'userOverlay' && window.vipTimer) clearInterval(window.vipTimer);
 }
 

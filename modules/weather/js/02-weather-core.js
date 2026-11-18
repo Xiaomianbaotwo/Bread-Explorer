@@ -244,15 +244,9 @@ async function selectCityByName(queryName, displayName) {
 
 // ================== 4. 渲染与调度 ==================
 function initWeatherUI() {
-  const showBeta = localStorage.getItem('bb-show-beta') === 'true';
-  if (!showBeta) {
-    const widget = document.getElementById('weatherWidget');
-    if (widget) widget.style.display = 'none';
-    const btnWeatherSetting = document.getElementById('btnChangeWeatherCity');
-    if (btnWeatherSetting) btnWeatherSetting.style.display = 'none';
-    return; 
-  }
-
+  /* 【修改】20261117：侧边天气卡片转正式功能，不再受旧内测开关（bb-show-beta）控制。
+     以前开关没开就隐藏挂件 + 隐藏「更改城市」入口并 return，导致页面刷新后天气卡片消失；
+     现在无论开关状态都正常初始化。 */
   if (!document.getElementById('weatherWidget')) {
     const widget = document.createElement('div');
     widget.id = 'weatherWidget';
@@ -717,7 +711,6 @@ async function checkUpdateProgress() {
 
 document.addEventListener('DOMContentLoaded', () => {
   initWeatherUI();
-  if (localStorage.getItem('bb-show-beta') === 'true') {
-    setInterval(checkUpdateProgress, 3000);
-  }
+  /* 【修改】20261117：天气已转正式功能，模拟更新进度轮询不再依赖内测开关 */
+  setInterval(checkUpdateProgress, 3000);
 });

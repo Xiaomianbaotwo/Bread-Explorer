@@ -3,7 +3,8 @@
    ========================================================= */
 
 /* 英文部分（4个） */
-@font-face { font-family: 'AguarinaScript'; src: url('../assets/fonts/AguarinaScript-Regular.ttf') format('truetype'); }
+/* 【修正】原文件名写成 AguarinaScript-Regular.ttf，实际文件为 AguafinaScript-Regular.ttf，family 名保持不变 */
+@font-face { font-family: 'AguarinaScript'; src: url('../assets/fonts/AguafinaScript-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'Cascadia'; src: url('../assets/fonts/Cascadia.ttf') format('truetype'); }
 @font-face { font-family: 'DancingScript'; src: url('../assets/fonts/DancingScript-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'DancingScriptBold'; src: url('../assets/fonts/DancingScript-Bold.ttf') format('truetype'); }
@@ -15,10 +16,12 @@
 @font-face { font-family: 'ZiHunXiaoXiaoLe'; src: url('../assets/fonts/字魂开心消消乐体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunTianDou'; src: url('../assets/fonts/字魂甜豆体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunXiaRi'; src: url('../assets/fonts/字魂夏日诗歌体(商用需授权).ttf') format('truetype'); }
-@font-face { font-family: 'ZiHunAnJiang'; src: url('../assets/fonts/字魂安酱 W5(商用需授权).ttf') format('truetype'); }
+/* 【修正】原路径指向不存在的「字魂安酱 W5」，改为 assets/fonts 内实际文件「字魂荧智 W5」，避免选字体时 404 */
+@font-face { font-family: 'ZiHunAnJiang'; src: url('../assets/fonts/字魂荧智 W5(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunYueSong'; src: url('../assets/fonts/字魂阅宋(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiXiaoHunChuLin'; src: url('../assets/fonts/字小魂初林体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiXiaoHunMengMengDa'; src: url('../assets/fonts/字小魂萌萌哒体(商用需授权).ttf') format('truetype'); }
-@font-face { font-family: 'ZiXiaoHunPangPang'; src: url('../assets/fonts/字小魂胖胖体(商用需授权).ttf') format('truetype'); }
+/* 【修正】原路径指向不存在的「字小魂胖胖体」，改为 assets/fonts 内实际文件「字小魂萌熊体」，避免选字体时 404 */
+@font-face { font-family: 'ZiXiaoHunPangPang'; src: url('../assets/fonts/字小魂萌熊体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiXiaoHunTianZhen'; src: url('../assets/fonts/字小魂天真儿风体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiXiaoHunYangRenDong'; src: url('../assets/fonts/字小魂杨任东楷书(商用需授权).ttf') format('truetype'); }

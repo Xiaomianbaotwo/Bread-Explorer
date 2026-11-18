@@ -34,8 +34,165 @@ const THEMES = {
   ocean:           { name: '🌊 深海幽蓝', enName: '🌊 Deep Ocean', emojis: ['🌊','🐬','🫧','🔱'], level: 2, cost: 1500 },
   'ocean-plus':    { name: '✨ 深海幽蓝 Plus', enName: '✨ Deep Ocean Plus', emojis: ['🌊','🐬','🫧','🔱'], level: 2, cost: 15000 },
   blackgold:       { name: '👑 暗夜黑金', enName: '👑 Black Gold', emojis: ['👑','♠️','🪙'], level: 2, cost: 1500 },
-  'blackgold-plus':{ name: '✨ 暗夜黑金 Plus', enName: '✨ Black Gold Plus', emojis: ['👑','♠️','🪙'], level: 2, cost: 15000 }
+  'blackgold-plus':{ name: '✨ 暗夜黑金 Plus', enName: '✨ Black Gold Plus', emojis: ['👑','♠️','🪙'], level: 2, cost: 15000 },
+
+  /* 【新增】20261119：面包等级专属主题「蜂蜜工坊」
+     只能靠面包等级解锁，不进积分商店：Lv30 原版 / Lv50 Plus / Lv60 Max。
+     配色与「面包原野」同族但更偏蜂蜜金 + 奶油白，.emojis 用于首页与子站漂浮。 */
+  honey:           { name: '🍯 蜂蜜工坊', enName: '🍯 Honey Atelier', emojis: ['🍯','🍞','🥐','🧈','🥛','🌾'], level: 0, breadOnly: true, breadLevel: 30 },
+  'honey-plus':    { name: '✨ 蜂蜜工坊 Plus', enName: '✨ Honey Atelier Plus', emojis: ['🍯','🍞','🥐','🧈','🥛','🌾','🍪','🥞','🍮'], level: 0, breadOnly: true, breadLevel: 50 },
+  'honey-max':     { name: '👑 蜂蜜工坊 Max', enName: '👑 Honey Atelier Max', emojis: ['🍯','🍞','🥐','🧈','🥛','🌾','🍪','🥞','🍮','🍫','🍰','🧁','🍩','✨'], level: 0, breadOnly: true, breadLevel: 60 },
+
+  /* 【新增】20261119：秋季季节主题「秋日私语」。
+     排在冬季前面；四档只走兑换码，不参与积分购买。
+     四档共用同一套暖金 / 枫红 / 奶油白配色，不随档位改变色相；
+     背景 emoji 数量按 Base → Plus → Max → Ultimate 递增。 */
+  autumn: {
+    name: '🍂 秋日私语', enName: '🍂 Autumn Whisper',
+    emojis: ['🍂','🍁','🌰','🌾','🍄','🍐'],
+    level: 0, season: 'autumn', seasonTier: 'base', redeemOnly: true
+  },
+  'autumn-plus': {
+    name: '🌾 秋日私语 Plus', enName: '🌾 Autumn Whisper Plus',
+    emojis: ['🍂','🍁','🌰','🌾','🍄','🍐','🍎','🌽','🎃','🧺','🥮'],
+    level: 0, season: 'autumn', seasonTier: 'plus', redeemOnly: true
+  },
+  'autumn-max': {
+    name: '🍁 秋日私语 Max', enName: '🍁 Autumn Whisper Max',
+    emojis: ['🍂','🍁','🌰','🌾','🍄','🍐','🍎','🌽','🎃','🧺','🥮','🦉','🦌','🍇','🍯','🪵'],
+    level: 0, season: 'autumn', seasonTier: 'max', redeemOnly: true
+  },
+  'autumn-ultimate': {
+    name: '🥮 秋日私语 Ultimate', enName: '🥮 Autumn Whisper Ultimate',
+    emojis: ['🍂','🍁','🌰','🌾','🍄','🍐','🍎','🌽','🎃','🧺','🥮','🦉','🦌','🍇','🍯','🪵','🌕','🧣','🥧','🍮'],
+    level: 0, season: 'autumn', seasonTier: 'ultimate', redeemOnly: true
+  },
+
+  /* 【新增】20261119：冬季季节主题「冬日雪境」。
+     目前四种档位都只走兑换码，不参与积分购买、不参与会员档位。
+     四档共用同一套冰蓝 + 雪白配色，只在光晕强度上递进；
+     背景 emoji 数量按 Base → Plus → Max → Ultimate 递增。 */
+  winter: {
+    name: '❄️ 冬日雪境', enName: '❄️ Winter Wonderland',
+    emojis: ['❄️','🌨️','⛄','🧣','🧤','🧊'],
+    level: 0, season: 'winter', seasonTier: 'base', redeemOnly: true
+  },
+  'winter-plus': {
+    name: '🌨️ 冬日雪境 Plus', enName: '🌨️ Winter Wonderland Plus',
+    emojis: ['❄️','🌨️','⛄','🧣','🧤','🧊','🌬️','🌫️','🛷','🧦'],
+    level: 0, season: 'winter', seasonTier: 'plus', redeemOnly: true
+  },
+  'winter-max': {
+    name: '🏔️ 冬日雪境 Max', enName: '🏔️ Winter Wonderland Max',
+    emojis: ['❄️','🌨️','⛄','🧣','🧤','🧊','🌬️','🌫️','🛷','🧦','🦌','🏂','🧥','🥶'],
+    level: 0, season: 'winter', seasonTier: 'max', redeemOnly: true
+  },
+  'winter-ultimate': {
+    name: '🧊 冬日雪境 Ultimate', enName: '🧊 Winter Wonderland Ultimate',
+    emojis: ['❄️','🌨️','⛄','🧣','🧤','🧊','🌬️','🌫️','🛷','🧦','🦌','🏂','🧥','🥶','🐧','🦭','🐻‍❄️','☃️','🎿','⛷️'],
+    level: 0, season: 'winter', seasonTier: 'ultimate', redeemOnly: true
+  },
+
+  /* 【新增】20261119：春季季节主题「春日花信」。
+     与「新春大吉」分开：新春是红包灯笼，春日是嫩芽 / 花信 / 蝴蝶。
+     四档只走兑换码，Base → Plus → Max → Ultimate 逐步增加花信与光晕。 */
+  springbloom: {
+    name: '🌱 春日花信', enName: '🌱 Spring Blossom',
+    emojis: ['🌱','🌸','🌷','🦋','🍃','🌿'],
+    level: 0, season: 'spring', seasonTier: 'base', redeemOnly: true
+  },
+  'springbloom-plus': {
+    name: '🌷 春日花信 Plus', enName: '🌷 Spring Blossom Plus',
+    emojis: ['🌱','🌸','🌷','🦋','🍃','🌿','🌼','💮','🪴'],
+    level: 0, season: 'spring', seasonTier: 'plus', redeemOnly: true
+  },
+  'springbloom-max': {
+    name: '🌼 春日花信 Max', enName: '🌼 Spring Blossom Max',
+    emojis: ['🌱','🌸','🌷','🦋','🍃','🌿','🌼','💮','🪴','🌺','🪻','🐝','🦋','🌞'],
+    level: 0, season: 'spring', seasonTier: 'max', redeemOnly: true
+  },
+  'springbloom-ultimate': {
+    name: '🌺 春日花信 Ultimate', enName: '🌺 Spring Blossom Ultimate',
+    emojis: ['🌱','🌸','🌷','🦋','🍃','🌿','🌼','💮','🪴','🌺','🪻','🐝','🦋','🌞','🌹','🌻','🕊️','🌦️','🌈','🍀'],
+    level: 0, season: 'spring', seasonTier: 'ultimate', redeemOnly: true
+  },
+
+  /* 【新增】20261119：夏季季节主题「盛夏海岸」。
+     海蓝 / 日光金 / 西瓜红；四档只走兑换码。 */
+  summer: {
+    name: '🌊 盛夏海岸', enName: '🌊 Summer Coast',
+    emojis: ['🌊','☀️','🐚','🏖️','🍉','🕶️'],
+    level: 0, season: 'summer', seasonTier: 'base', redeemOnly: true
+  },
+  'summer-plus': {
+    name: '☀️ 盛夏海岸 Plus', enName: '☀️ Summer Coast Plus',
+    emojis: ['🌊','☀️','🐚','🏖️','🍉','🕶️','🌴','🍹','🩴','🐠'],
+    level: 0, season: 'summer', seasonTier: 'plus', redeemOnly: true
+  },
+  'summer-max': {
+    name: '🍉 盛夏海岸 Max', enName: '🍉 Summer Coast Max',
+    emojis: ['🌊','☀️','🐚','🏖️','🍉','🕶️','🌴','🍹','🩴','🐠','🏄','🛟','🧊','🍦','🌅'],
+    level: 0, season: 'summer', seasonTier: 'max', redeemOnly: true
+  },
+  'summer-ultimate': {
+    name: '🐚 盛夏海岸 Ultimate', enName: '🐚 Summer Coast Ultimate',
+    emojis: ['🌊','☀️','🐚','🏖️','🍉','🕶️','🌴','🍹','🩴','🐠','🏄','🛟','🧊','🍦','🌅','🐬','🦀','🪸','⛱️','🌠'],
+    level: 0, season: 'summer', seasonTier: 'ultimate', redeemOnly: true
+  }
 };
+
+/* 【新增】20261119：主题中心 / 商店的四季顺序。
+   春 → 夏 → 秋 → 冬；四季主题必须按这个顺序出现，不能按代码书写顺序。 */
+(function orderSeasonThemes() {
+  const seasonal = [
+    'springbloom', 'springbloom-plus', 'springbloom-max', 'springbloom-ultimate',
+    'summer', 'summer-plus', 'summer-max', 'summer-ultimate',
+    'autumn', 'autumn-plus', 'autumn-max', 'autumn-ultimate',
+    'winter', 'winter-plus', 'winter-max', 'winter-ultimate'
+  ];
+  const saved = {};
+  Object.keys(THEMES).forEach(key => { saved[key] = THEMES[key]; });
+  Object.keys(THEMES).forEach(key => { delete THEMES[key]; });
+
+  const head = Object.keys(saved).filter(key => !seasonal.includes(key));
+  [...head, ...seasonal].forEach(key => {
+    if (saved[key]) THEMES[key] = saved[key];
+  });
+})();
+
+/* 【新增】20261119：主题中心徽标。
+   以前所有 Plus 都是 ✨、Max 都是 👑，放在一起分不出主题；
+   现在每个主题的 Base / Plus / Max（以及冬季 Ultimate）都有独立徽标。 */
+const THEME_BADGES = {
+  default: '🍞', 'default-plus': '🥯', 'default-max': '🥨',
+  spring: '🧧', 'spring-plus': '🏮', 'spring-max': '🧨',
+  food: '🍔', 'food-plus': '🍕', 'food-max': '🍱',
+  fruit: '🍎', 'fruit-plus': '🍓', 'fruit-max': '🍇',
+  sakura: '🌸', 'sakura-plus': '💮', 'sakura-max': '🏵️',
+  flower: '🌺', 'flower-plus': '🌷', 'flower-max': '🌹',
+  gold: '🪙', 'gold-plus': '💰', 'gold-max': '🏆',
+  cyber: '⚡', 'cyber-plus': '🟢', 'cyber-max': '🧬',
+  forest: '🌿', 'forest-plus': '🍀', 'forest-max': '🌳',
+  diamond: '💎', 'diamond-plus': '💠', 'diamond-max': '🔷',
+  aurora: '🌌', 'aurora-plus': '🌠', 'aurora-max': '🌟',
+  ocean: '🌊', 'ocean-plus': '🐬', 'ocean-max': '🐋',
+  blackgold: '👑', 'blackgold-plus': '♠️', 'blackgold-max': '🖤',
+  honey: '🍯', 'honey-plus': '🧈', 'honey-max': '🍰',
+  autumn: '🍂', 'autumn-plus': '🌾', 'autumn-max': '🍁', 'autumn-ultimate': '🥮',
+  winter: '❄️', 'winter-plus': '🌨️', 'winter-max': '🏔️', 'winter-ultimate': '🧊',
+  springbloom: '🌱', 'springbloom-plus': '🌻', 'springbloom-max': '🌼', 'springbloom-ultimate': '🦋',
+  summer: '🏖️', 'summer-plus': '☀️', 'summer-max': '🍉', 'summer-ultimate': '🐚'
+};
+
+/* 把名字开头的旧徽标替换成新徽标，保留后面的中英文主题名。 */
+Object.entries(THEME_BADGES).forEach(([key, badge]) => {
+  const t = THEMES[key];
+  if (!t) return;
+  const stripLeadingBadge = value => String(value || '').replace(/^\S+\s*/, '');
+  t.badge = badge;
+  t.name = badge + ' ' + stripLeadingBadge(t.name);
+  t.enName = badge + ' ' + stripLeadingBadge(t.enName);
+});
 
 const SHOP_THEMES = ['diamond', 'sakura', 'ocean', 'blackgold'];
 
@@ -59,12 +216,29 @@ const TIER_BASE_THEMES = {
 /* 只能靠会员档位获得的基础主题：不参与积分购买 */
 const TIER_ONLY_THEMES = ['sakura', 'gold', 'forest', 'diamond', 'ocean', 'blackgold', 'cyber'];
 
+/* 【新增】20261118：统一读取“已解锁主题”记录。
+   兼容旧数据里 unlockedThemes 是 JSON 字符串或逗号分隔字符串的情况，
+   避免明明买过、云端也存了，却因为类型不是 Array 被判定成未拥有。 */
+function themeOwnedKeys(u) {
+  const raw = u && (u.unlockedThemes !== undefined ? u.unlockedThemes : u.unlocked_themes);
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(String);
+    } catch (e) { /* 不是 JSON，继续按逗号分隔处理 */ }
+    return raw.split(',').map(s => s.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 /* 档位自带（只看会员身份，不写进账号） */
 function themeTierOwned(key, u, status) {
   const t = THEMES[key];
   if (!t) return false;
   if (key.endsWith('-plus') || key.endsWith('-max')) return false;
   if (t.isSpring) return false;                 // 新春大吉只能靠 Lv10 邮件
+  if (t.season) return false;                   // 季节主题只能靠兑换码
   const type = (status && status.type) ? status.type : 'none';
   const list = TIER_BASE_THEMES[type] || TIER_BASE_THEMES.none;
   return list.indexOf(key) >= 0;
@@ -72,7 +246,21 @@ function themeTierOwned(key, u, status) {
 
 /* 主题当前是否可用：个人已解锁（购买 / 等级奖励 / Lv10 邮件）优先，其次看会员档位 */
 function themeIsOwned(key, u, status) {
-  if (u && Array.isArray(u.unlockedThemes) && u.unlockedThemes.indexOf(key) >= 0) return true;
+  if (themeOwnedKeys(u).indexOf(key) >= 0) return true;
+  /* 【新增】20261118：免费基础主题注册即拥有。
+     以前只查 unlockedThemes 和会员档位，导致「美食天堂 / 水果圣地 / 面包原野」
+     这种免费基础版被当成未拥有，买它们的 Plus 时会误报“缺少前置主题”。 */
+  const baseTheme = THEMES[key];
+  const isFreeBase = baseTheme
+    && !baseTheme.isSpring
+    && !baseTheme.breadOnly
+    && !baseTheme.redeemOnly
+    && !baseTheme.season
+    && !key.endsWith('-plus')
+    && !key.endsWith('-max')
+    && !key.endsWith('-ultimate')
+    && (baseTheme.cost === undefined || Number(baseTheme.cost) === 0);
+  if (isFreeBase) return true;
   return themeTierOwned(key, u, status);
 }
 
@@ -182,3 +370,33 @@ let theme = store.get('bb-theme', defaultTheme);
 let engineKey = store.get('bb-engine', 'quark');
 if (!ENGINES[engineKey]) engineKey = 'quark';
 let sites = [], history = [], currentTheme = 'default';
+
+/* =========================================================
+   【新增】面包篮容量模型（20261117 · 与 rpc_upsert_sites 配套）
+   原则：SVIP(N) ⊇ VIP(N) —— 同级 SVIP 先拿走 VIP 的全部权益，再叠加自身加成。
+   数值必须与 sql/20261117-rpc-upsert-sites.sql 里的 site_limit() 保持一致，
+   改一边记得同步另一边（服务端是最终裁判，这里是前端预检 + 界面显示）。
+   ========================================================= */
+const SITE_LIMIT_GUEST  = 8;    // 游客 / 未登录
+const SITE_LIMIT_NORMAL = 50;   // 已登录但不是会员
+const SITE_HARD_CAP     = 500;  // 「无限」的技术硬顶，防止有人把库写爆
+const SITE_LIMIT_BANDS  = [
+  { minLevel: 100, vip: 500, svip: 500 },
+  { minLevel: 50,  vip: 180, svip: 270 },
+  { minLevel: 10,  vip: 120, svip: 180 },
+  { minLevel: 1,   vip: 80,  svip: 120 }
+];
+
+/* 按会员类型 + 等级算容量；非会员返回 NORMAL，游客传 null 得到 GUEST */
+/* 【修改】20261118：第三个参数是面包等级（1~60），每满 10 级 +5 个容量，
+   和服务端 basket_limit 同一套口径；VIP / SVIP 与面包等级的加成叠加，但不能超过硬顶 */
+function siteLimitOf(type, level, breadLevel) {
+  const bonus = Math.floor(Math.max(1, Math.min(60, Number(breadLevel) || 1)) / 10) * 5;
+  if (!type) return SITE_LIMIT_GUEST;
+  if (type !== 'vip' && type !== 'svip') {
+    return Math.min(SITE_HARD_CAP, SITE_LIMIT_NORMAL + bonus);
+  }
+  const lv = Math.max(1, Math.min(100, Number(level) || 1));
+  const band = SITE_LIMIT_BANDS.find(b => lv >= b.minLevel) || SITE_LIMIT_BANDS[SITE_LIMIT_BANDS.length - 1];
+  return Math.min(SITE_HARD_CAP, (type === 'svip' ? band.svip : band.vip) + bonus);
+}

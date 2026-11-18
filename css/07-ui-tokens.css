@@ -1,0 +1,149 @@
+/* =========================================================
+   07-ui-tokens.css
+   【新增】20261118：视觉令牌落地
+   只统一「圆角 / 阴影 / 滚动条 / 主题切换过渡」，不改任何主题配色。
+   特殊形状保持原样：胶囊按钮 999px、头像 50%、进度条、徽标、小红点。
+   ========================================================= */
+
+/* ---------- 1. 弹窗外壳：统一 24px ---------- */
+.modal,
+.friends-modal {
+  border-radius: var(--radius-xl);
+}
+
+/* ---------- 2. 面板内的大卡片：统一 14px ---------- */
+.vip-level-box,
+.vip-rights-box,
+.vip-log-box,
+.pc-calendar {
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- 3. 输入框 / 普通按钮 / 列表项：统一 12px ---------- */
+.btn,
+.modal input:not([type="checkbox"]):not([type="radio"]),
+.modal textarea,
+.modal select,
+.theme-btn,
+.shop-item,
+.theme-shop-item,
+.font-search-input,
+.font-list-box,
+.font-item,
+.bread-token-item,
+.friends-search-box input,
+.vip-expire-row,
+.vip-task-item,
+.vip-exchange-box,
+.vip-checkin-btn {
+  border-radius: var(--radius-md);
+}
+
+/* ---------- 4. 小按钮：统一 10px ---------- */
+.vip-renew-btn,
+.vip-task-btn {
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- 5. 阴影：内嵌卡片用轻阴影，弹窗继续用 --shadow ---------- */
+.theme-btn:hover,
+.shop-item:hover,
+.theme-shop-item:hover {
+  box-shadow: var(--shadow-soft);
+}
+.vip-checkin-btn {
+  box-shadow: var(--shadow-soft);
+}
+
+/* ---------- 6. 滚动条统一 ----------
+   原来只有 .modal / 主题列表 / 字体列表写了滚动条，其它面板走浏览器默认，
+   浅色主题下会出现突兀的白条；.modal 的 thumb 还直接用了 --card-border（近白色）。
+   这里统一成「细、圆角、颜色跟随当前主题文字色」的一条。 */
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: var(--scroll-size);
+  height: var(--scroll-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+  /* 上下留出圆角安全区，thumb 不会顶到弹窗圆角外面 */
+  margin-block: 10px;
+  margin-inline: 10px;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(120, 90, 55, .35);
+  background: var(--scroll-thumb) !important;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 90, 55, .55);
+  background: var(--scroll-thumb-hover) !important;
+}
+
+/* 弹窗与面板加稳定槽位，滚动条出现/消失时内容不会横向跳动 */
+.modal,
+.vip-panel-body,
+.friends-modal {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+/* ---------- 7. 主题切换过渡 ----------
+   只在 applyTheme() 期间给 body 挂 .is-theme-switching（约 400ms），
+   让背景、文字、描边柔和渐变，避免全站硬切。 */
+body.is-theme-switching {
+  transition:
+    --bg1 .8s ease-in-out,
+    --bg2 .8s ease-in-out,
+    --bg3 .8s ease-in-out,
+    --glow-1 .8s ease-in-out,
+    --glow-2 .8s ease-in-out,
+    background-color .8s ease-in-out,
+    color .8s ease-in-out,
+    border-color .8s ease-in-out,
+    box-shadow .8s ease-in-out !important;
+}
+
+body.is-theme-switching * {
+  transition:
+    background-color .65s ease-in-out,
+    color .65s ease-in-out,
+    border-color .65s ease-in-out,
+    box-shadow .65s ease-in-out !important;
+}
+
+/* ---------- 8. 首页布局修正 ----------
+   header 里有一句内联 position: relative，会把 315px 高的 header 留在文档流里，
+   导致 main 被推下去、页面出现滚动条。
+   这里用 fixed + !important 把 header 变成浮层，main 独占整页高度，
+   时钟/问候/搜索/面包篮作为一整组在视口里垂直居中。 */
+header {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100 !important;
+  pointer-events: none;
+}
+
+/* header 里的实际控件仍然可点；空白区域不挡住下面的时钟/搜索 */
+header .logo,
+header .header-actions {
+  pointer-events: auto;
+}
+
+main {
+  flex: 1;
+  justify-content: center;
+  /* 24px 基础上再加 32px，整组视觉下移约 16px，避免时钟显得偏上 */
+  padding-top: 116px;
+}

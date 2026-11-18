@@ -92,9 +92,10 @@
       u.vipLevel += 1;
       crossed.push(u.vipLevel);
     }
-    /* 满级后不再升级，point 封顶在本级上限减一，避免进度条溢出 */
+    /* 满级后不再升级：星光值允许一直攒到本级上限（4000），进度条显示满格；
+       【修改】20261119：原来封顶在 cap - 1（3999），导致永远显示 3999/4000、拿不到满值。 */
     if (u.vipLevel >= MAX_LEVEL) {
-      u.vipPoint = Math.min(u.vipPoint, capOf(MAX_LEVEL, type) - 1);
+      u.vipPoint = Math.min(u.vipPoint, capOf(MAX_LEVEL, type));
     }
     return crossed;
   }
@@ -106,6 +107,11 @@
     if (typeof currentUser === 'undefined' || !currentUser) return;
     db[currentUser] = u;
     store.set('bb-users', db);
+    /* 【修改】20261118 P0：emails 不再随 bread_assets 整行 upsert，
+       升级时新发的等级奖励邮件改用单列 RPC 同步。 */
+    if (typeof syncEmailsToCloud === 'function') {
+      try { syncEmailsToCloud(u); } catch (e) { /* 邮件同步失败不影响等级落库 */ }
+    }
   }
 
   /* ---------- 身份切换结算 ----------

@@ -2,11 +2,51 @@
    01-vars.css
    ========================================================= */
 
+/* 【新增】20261118：把渐变用到的背景色注册成可动画颜色。
+   普通 background 过渡无法补间 linear-gradient，只有注册后的自定义属性
+   才能在主题切换时从旧色平滑过渡到新色。 */
+@property --bg1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #fff6e8;
+}
+@property --bg2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffe6c2;
+}
+@property --bg3 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffd9a6;
+}
+@property --glow-1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(255, 200, 120, .35);
+}
+@property --glow-2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: rgba(255, 170, 90, .3);
+}
+
 :root {
   --bg1: #fff6e8; --bg2: #ffe6c2; --bg3: #ffd9a6;
   --ink: #5d4023; --ink-soft: #a17c4d;
   --card: rgba(255, 255, 255, .55); --card-border: rgba(255, 255, 255, .85);
   --shadow: 0 10px 30px rgba(160, 110, 40, .16);
+  /* 【新增】20261118：视觉令牌（只统一圆角/阴影/滚动条，不改任何主题配色）
+     圆角按“外壳 → 卡片 → 控件 → 小按钮”分四级，特殊形状（胶囊 999px、头像 50%）不参与统一。 */
+  --radius-xl: 24px;   /* 弹窗外壳 */
+  --radius-lg: 14px;   /* 面板内的大卡片 */
+  --radius-md: 12px;   /* 输入框、普通按钮、列表项 */
+  --radius-sm: 10px;   /* 小按钮、标签块 */
+  --shadow-soft: 0 4px 14px rgba(160, 110, 40, .10);
+  /* 滚动条：颜色从当前主题的文字色派生，避免浅色主题里出现“白条” */
+  --scroll-size: 8px;
+  --scroll-thumb: color-mix(in srgb, var(--ink-soft) 42%, transparent);
+  --scroll-thumb-hover: color-mix(in srgb, var(--ink-soft) 62%, transparent);
   --accent: #e8933a;
   --glow-1: rgba(255, 200, 120, .35); --glow-2: rgba(255, 170, 90, .3);
 }
@@ -15,6 +55,7 @@ body.dark {
   --ink: #f3e3c3; --ink-soft: #b39563;
   --card: rgba(255, 226, 180, .07); --card-border: rgba(255, 226, 180, .16);
   --shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  --shadow-soft: 0 4px 14px rgba(0, 0, 0, .35);
   --accent: #f0a04a;
 }
 
@@ -82,3 +123,214 @@ body.dark.theme-food { --bg1: #331a00; --bg2: #1a0d00; --bg3: #000000; --ink: #f
 /* ★ 新增：水果圣地专属配色 */
 body.theme-fruit { --bg1: #f0fff4; --bg2: #c3fae8; --bg3: #38d9a9; --ink: #003329; --ink-soft: #00664a; --accent: #20c997; --glow-1: rgba(32,201,151,0.3); --glow-2: rgba(255,107,107,0.2); }
 body.dark.theme-fruit { --bg1: #002b22; --bg2: #001a14; --bg3: #000000; --ink: #c3fae8; --ink-soft: #63e6be; --accent: #38d9a9; }
+/* =========================================================
+   【新增】20261119：面包等级专属主题「蜂蜜工坊」
+   只能由面包等级解锁（Lv30 原版 / Lv50 Plus / Lv60 Max），不参与积分购买。
+   配色与「面包原野」同族：面包原野是奶油 + 橙，蜂蜜工坊是奶油白 + 蜂蜜金，更亮更甜。
+   ========================================================= */
+body.theme-honey {
+  --bg1: #fffaf0; --bg2: #ffeecb; --bg3: #f6cf92;
+  --ink: #5b4021; --ink-soft: #9a7440;
+  --card: rgba(255, 255, 255, .6); --card-border: rgba(255, 214, 150, .9);
+  --shadow: 0 10px 30px rgba(186, 132, 44, .18);
+  --accent: #d99a2b;
+  --glow-1: rgba(217, 154, 43, .32); --glow-2: rgba(246, 207, 146, .3);
+}
+body.dark.theme-honey {
+  --bg1: #2a2113; --bg2: #1c150b; --bg3: #120c05;
+  --ink: #ffe7c2; --ink-soft: #c9a670;
+  --card: rgba(255, 226, 170, .08); --card-border: rgba(255, 208, 130, .18);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+  --accent: #f3b64a;
+  --glow-1: rgba(243, 182, 74, .28); --glow-2: rgba(255, 210, 140, .2);
+}
+
+/* Plus：焦糖化，金色更浓 */
+body.theme-honey.theme-tier-plus {
+  --bg1: #fff7e3; --bg2: #ffe3ad; --bg3: #efc070;
+  --accent: #e8a63c;
+  --glow-1: rgba(232, 166, 60, .38); --glow-2: rgba(255, 205, 120, .32);
+}
+body.dark.theme-honey.theme-tier-plus {
+  --bg1: #33270f; --bg2: #241a09; --bg3: #150e04;
+  --ink: #ffeccb; --ink-soft: #d8b273;
+  --accent: #ffc55c;
+}
+
+/* Max：奶油白 + 深焦糖 + 金边，满级观感 */
+body.theme-honey.theme-tier-max {
+  --bg1: #fff8e1; --bg2: #ffe0a3; --bg3: #e6b34a;
+  --ink: #4a2f10; --ink-soft: #8a6428;
+  --accent: #c98a1e;
+  --glow-1: rgba(255, 205, 90, .42); --glow-2: rgba(230, 179, 74, .3);
+}
+body.dark.theme-honey.theme-tier-max {
+  --bg1: #2b1d0d; --bg2: #1a1106; --bg3: #0d0803;
+  --ink: #ffe9b8; --ink-soft: #e0bb72;
+  --accent: #ffcc66;
+  --glow-1: rgba(255, 204, 102, .34); --glow-2: rgba(201, 138, 30, .26);
+}
+
+/* =========================================================
+   【新增】20261119：秋季季节主题「秋日私语」
+   四档共用同一套暖金 / 枫红 / 奶油白配色，不随档位改变色相；
+   Plus / Max / Ultimate 只增强光晕，保证同主题颜色统一。
+   ========================================================= */
+body.theme-autumn {
+  --bg1: #fff8ee; --bg2: #ffe9cf; --bg3: #f4cb96;
+  --ink: #4d321f; --ink-soft: #8a6549;
+  --card: rgba(255, 250, 244, .66); --card-border: rgba(224, 182, 132, .9);
+  --shadow: 0 10px 30px rgba(160, 110, 60, .18);
+  --accent: #d9772a;
+  --glow-1: rgba(255, 170, 80, .34); --glow-2: rgba(255, 215, 150, .34);
+}
+body.dark.theme-autumn {
+  --bg1: #2a1910; --bg2: #1b0f08; --bg3: #0d0603;
+  --ink: #ffedd9; --ink-soft: #d8ab82;
+  --card: rgba(255, 210, 160, .07); --card-border: rgba(220, 170, 120, .22);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .55);
+  --accent: #f2a45c;
+  --glow-1: rgba(240, 150, 70, .26); --glow-2: rgba(255, 210, 140, .18);
+}
+/* Plus：同色相，暖金光晕更明显 */
+body.theme-autumn.theme-tier-plus {
+  --glow-1: rgba(255, 165, 75, .42); --glow-2: rgba(255, 220, 160, .42);
+}
+body.dark.theme-autumn.theme-tier-plus {
+  --glow-1: rgba(245, 160, 80, .32); --glow-2: rgba(255, 215, 150, .22);
+}
+/* Max：同色相，枫红光晕更集中 */
+body.theme-autumn.theme-tier-max {
+  --glow-1: rgba(245, 140, 70, .5); --glow-2: rgba(255, 215, 145, .5);
+}
+body.dark.theme-autumn.theme-tier-max {
+  --glow-1: rgba(250, 145, 75, .38); --glow-2: rgba(255, 220, 150, .26);
+}
+/* Ultimate：同色相，只提高暖金光晕与边缘亮度 */
+body.theme-autumn.theme-tier-ultimate {
+  --glow-1: rgba(240, 130, 60, .56); --glow-2: rgba(255, 225, 160, .56);
+}
+body.dark.theme-autumn.theme-tier-ultimate {
+  --glow-1: rgba(255, 150, 80, .44); --glow-2: rgba(255, 225, 160, .3);
+}
+
+/* =========================================================
+   【新增】20261119：冬季季节主题「冬日雪境」
+   四档共用同一套冰蓝 / 雪白 / 银灰配色，不随档位改变色相；
+   Plus / Max / Ultimate 只增强光晕和雪感，保证同主题颜色统一。
+   ========================================================= */
+body.theme-winter {
+  --bg1: #f4f9ff; --bg2: #dfeeff; --bg3: #bfdcf5;
+  --ink: #27445f; --ink-soft: #67849c;
+  --card: rgba(255, 255, 255, .62); --card-border: rgba(180, 215, 242, .9);
+  --shadow: 0 10px 30px rgba(88, 135, 175, .18);
+  --accent: #4c94c9;
+  --glow-1: rgba(150, 200, 240, .32); --glow-2: rgba(220, 238, 255, .34);
+}
+body.dark.theme-winter {
+  --bg1: #0c1926; --bg2: #07121d; --bg3: #02070c;
+  --ink: #e6f3ff; --ink-soft: #9ec2db;
+  --card: rgba(180, 220, 255, .07); --card-border: rgba(160, 210, 245, .2);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .55);
+  --accent: #8fc9ef;
+  --glow-1: rgba(130, 195, 240, .25); --glow-2: rgba(210, 235, 255, .16);
+}
+/* Plus：同色相，光晕更明显 */
+body.theme-winter.theme-tier-plus {
+  --glow-1: rgba(140, 195, 240, .4); --glow-2: rgba(225, 242, 255, .4);
+}
+body.dark.theme-winter.theme-tier-plus {
+  --glow-1: rgba(140, 205, 250, .3); --glow-2: rgba(215, 240, 255, .2);
+}
+/* Max：同色相，冷光更集中 */
+body.theme-winter.theme-tier-max {
+  --glow-1: rgba(125, 185, 235, .46); --glow-2: rgba(230, 246, 255, .46);
+}
+body.dark.theme-winter.theme-tier-max {
+  --glow-1: rgba(135, 200, 245, .36); --glow-2: rgba(220, 245, 255, .24);
+}
+/* Ultimate：同色相，只提高冰蓝光晕与边缘亮度 */
+body.theme-winter.theme-tier-ultimate {
+  --glow-1: rgba(115, 180, 235, .52); --glow-2: rgba(235, 250, 255, .52);
+}
+body.dark.theme-winter.theme-tier-ultimate {
+  --glow-1: rgba(145, 210, 255, .42); --glow-2: rgba(230, 250, 255, .28);
+}
+
+/* =========================================================
+   【新增】20261119：春季季节主题「春日花信」
+   嫩芽绿 / 樱粉 / 奶油白；四档共用同一套色相，只递进光晕。
+   ========================================================= */
+body.theme-springbloom {
+  --bg1: #f9fff2; --bg2: #e9f8db; --bg3: #cdeeb8;
+  --ink: #2e4a2a; --ink-soft: #6b855e;
+  --card: rgba(255, 255, 250, .66); --card-border: rgba(185, 220, 160, .9);
+  --shadow: 0 10px 30px rgba(92, 135, 78, .16);
+  --accent: #6fae48;
+  --glow-1: rgba(160, 225, 120, .34); --glow-2: rgba(255, 185, 215, .32);
+}
+body.dark.theme-springbloom {
+  --bg1: #10210d; --bg2: #091407; --bg3: #030802;
+  --ink: #e8ffd9; --ink-soft: #a7cc91;
+  --card: rgba(190, 240, 160, .07); --card-border: rgba(160, 210, 130, .2);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .55);
+  --accent: #a8e06f;
+  --glow-1: rgba(140, 220, 95, .25); --glow-2: rgba(255, 170, 210, .16);
+}
+body.theme-springbloom.theme-tier-plus {
+  --glow-1: rgba(150, 230, 110, .42); --glow-2: rgba(255, 180, 215, .42);
+}
+body.dark.theme-springbloom.theme-tier-plus {
+  --glow-1: rgba(150, 235, 110, .32); --glow-2: rgba(255, 170, 215, .22);
+}
+body.theme-springbloom.theme-tier-max {
+  --glow-1: rgba(140, 225, 100, .5); --glow-2: rgba(255, 165, 205, .5);
+}
+body.dark.theme-springbloom.theme-tier-max {
+  --glow-1: rgba(145, 230, 105, .38); --glow-2: rgba(255, 175, 215, .26);
+}
+body.theme-springbloom.theme-tier-ultimate {
+  --glow-1: rgba(130, 220, 90, .58); --glow-2: rgba(255, 155, 200, .58);
+}
+body.dark.theme-springbloom.theme-tier-ultimate {
+  --glow-1: rgba(145, 235, 100, .46); --glow-2: rgba(255, 170, 215, .3);
+}
+
+/* =========================================================
+   【新增】20261119：夏季季节主题「盛夏海岸」
+   海蓝 / 日光金 / 西瓜红；四档共用同一套色相，只递进光晕。
+   ========================================================= */
+body.theme-summer {
+  --bg1: #f3fdff; --bg2: #d9f5ff; --bg3: #b2e8f7;
+  --ink: #16465a; --ink-soft: #5a8496;
+  --card: rgba(255, 255, 255, .64); --card-border: rgba(155, 215, 235, .9);
+  --shadow: 0 10px 30px rgba(55, 125, 150, .16);
+  --accent: #1b9fc2;
+  --glow-1: rgba(90, 210, 235, .34); --glow-2: rgba(255, 205, 105, .34);
+}
+body.dark.theme-summer {
+  --bg1: #07232e; --bg2: #03141b; --bg3: #01080c;
+  --ink: #e3f8ff; --ink-soft: #9fc9d8;
+  --card: rgba(130, 220, 245, .07); --card-border: rgba(120, 200, 225, .2);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .55);
+  --accent: #74d9ef;
+  --glow-1: rgba(70, 205, 235, .25); --glow-2: rgba(255, 195, 90, .16);
+}
+body.theme-summer.theme-tier-plus {
+  --glow-1: rgba(70, 215, 240, .42); --glow-2: rgba(255, 200, 95, .42);
+}
+body.dark.theme-summer.theme-tier-plus {
+  --glow-1: rgba(75, 215, 245, .32); --glow-2: rgba(255, 190, 85, .22);
+}
+body.theme-summer.theme-tier-max {
+  --glow-1: rgba(55, 210, 240, .5); --glow-2: rgba(255, 190, 80, .5);
+}
+body.dark.theme-summer.theme-tier-max {
+  --glow-1: rgba(65, 210, 245, .38); --glow-2: rgba(255, 190, 80, .26);
+}
+body.theme-summer.theme-tier-ultimate {
+  --glow-1: rgba(40, 205, 240, .58); --glow-2: rgba(255, 180, 65, .58);
+}
+body.dark.theme-summer.theme-tier-ultimate {
+  --glow-1: rgba(60, 210, 250, .46); --glow-2: rgba(255, 185, 70, .3);
+}

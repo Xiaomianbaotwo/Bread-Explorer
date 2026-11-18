@@ -102,10 +102,13 @@
           <!-- 4. 独立签到按钮 -->
           <button class="vip-checkin-btn" id="vipCheckinBtn"></button>
 
-          <!-- 5. 每日 / 每周 / 每月任务 -->
+          <!-- 5. 积分 → 星光值 兑换 -->
+          <div class="vip-exchange-box" id="vipExchangeBox"></div>
+
+          <!-- 6. 每日 / 每周 / 每月任务 -->
           <div id="vipTaskArea"></div>
 
-          <!-- 6. 权益说明 / 奖励记录 -->
+          <!-- 7. 权益说明 / 奖励记录 -->
           <div class="vip-rights-box">
             <div class="vip-rights-title" id="vipRightsTitle">${T('vip.rightsTitle')}</div>
             <ul class="vip-rights-list" id="vipRightsList"></ul>
@@ -204,6 +207,8 @@
     const pct = snap.isMax ? 100 : Math.min(100, Math.round((snap.point / snap.cap) * 100));
     fill.style.width = pct + '%';
     fill.className = 'vip-bar-fill' + (type === 'svip' ? ' svip' : '');
+    /* 【新增】20261118：0% 时去掉最小宽度，避免进度条左端出现一个小圆点 */
+    fill.classList.toggle('empty', pct <= 0);
     document.getElementById('vipScaleLeft').textContent = 'Lv.' + snap.level;
     document.getElementById('vipScaleRight').textContent = snap.isMax ? 'Lv.100' : 'Lv.' + (snap.level + 1);
 
@@ -215,12 +220,80 @@
       ? T('vip.checkinDone', { n: window.VipTasks ? window.VipTasks.CHECKIN_REWARD : 0 })
       : T('vip.checkinBtn', { n: window.VipTasks ? window.VipTasks.CHECKIN_REWARD : 0 });
 
-    /* 5. 任务区 */
+    /* 5. 积分 → 星光值 兑换区 */
+    renderExchange(u, snap, type);
+
+    /* 6. 任务区 */
     renderTasks(u);
 
-    /* 6. 权益说明 + 奖励记录 */
+    /* 7. 权益说明 + 奖励记录 */
     renderRights(u, snap, type);
     renderLog(u);
+  }
+
+  /* ---------- 积分兑星光面板 ---------- */
+  function renderExchange(u, snap, type) {
+    const box = document.getElementById('vipExchangeBox');
+    if (!box) return;
+    box.innerHTML = '';
+
+    if (typeof window.VipStar === 'undefined') return;
+
+    const view = window.VipStar.getView(u);
+    const head = document.createElement('div');
+    head.className = 'vip-exchange-head';
+    head.innerHTML = `<span>${T('vip.exchangeTitle')}</span>
+      <span class="vip-exchange-quota">${T('vip.exchangeQuota', { used: view.used, cap: view.cap })}</span>`;
+    box.appendChild(head);
+
+    const tip = document.createElement('div');
+    tip.className = 'vip-exchange-tip';
+    tip.textContent = view.enabled
+      ? T('vip.exchangeTip', { rate: view.rateBase, remain: view.remain, points: view.points })
+      : T('vip.exchangeNone');
+    box.appendChild(tip);
+
+    if (!view.enabled) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'vip-exchange-grid';
+    view.pkgs.forEach(pkg => {
+      const btn = document.createElement('button');
+      btn.className = 'vip-exchange-item';
+      const disabled = (view.points < pkg.cost) || (view.remain < pkg.star);
+      btn.disabled = disabled;
+      btn.innerHTML = `<span class="ve-star">+${pkg.star} ⭐</span>
+        <span class="ve-cost">${pkg.cost} 🪙</span>`;
+      btn.title = `${pkg.cost} 积分 → ${pkg.star} 星光值`;
+      btn.onclick = () => onExchange(pkg.id, btn);
+      grid.appendChild(btn);
+    });
+    box.appendChild(grid);
+  }
+
+  async function onExchange(pkgId, btn) {
+    if (typeof window.VipStar === 'undefined') return;
+    if (btn) btn.disabled = true;
+    /* 【修改】20261118 P3：exchange 改走服务端 RPC，返回 Promise。 */
+    const res = await window.VipStar.exchange(pkgId);
+    if (!res.ok) {
+      let msg = T('vip.exchangeFail');
+      if (res.reason === 'not-member') msg = T('vip.notMemberTip');
+      else if (res.reason === 'no-points') msg = T('vip.exchangeNoPoints', { need: res.need });
+      else if (res.reason === 'daily-cap') msg = T('vip.exchangeDailyCap', { remain: res.remain });
+      if (typeof showToast === 'function') showToast(msg, '⚠️');
+      render();
+      return;
+    }
+    if (typeof showToast === 'function') {
+      const txt = res.levelUp.length
+        ? T('vip.exchangeLevelUp', { star: res.star, level: res.level })
+        : T('vip.exchangeOk', { star: res.star, point: res.point, cap: (window.VIPCore.capOf(res.level, window.VIPCore.memberTypeOf(getUsersDB()[currentUser])) || 0) });
+      showToast(txt, res.levelUp.length ? '🎉' : '⭐');
+    }
+    /* 兑换可能跨级，跨级会发等级奖励邮件，这里主动刷新邮件列表 */
+    if (typeof window.renderMails === 'function') { try { window.renderMails(); } catch (e) { /* 忽略 */ } }
+    render();
   }
 
   function renderTasks(u) {
@@ -254,8 +327,12 @@
 
         const main = document.createElement('div');
         main.className = 'vip-task-main';
-        const name = T(`vip.tasks.${item.id}.name`);
-        const desc = T(`vip.tasks.${item.id}.desc`);
+        /* 【新增】20261118：任务名/说明优先用云端 vip_task_config 的双语文案
+           （中英列 task_name_zh/_en、task_desc_zh/_en），没有配置再回落 i18n 词表 */
+        const cfgName = window.VipConfig && window.VipConfig.taskText ? window.VipConfig.taskText(item.id, 'name') : null;
+        const cfgDesc = window.VipConfig && window.VipConfig.taskText ? window.VipConfig.taskText(item.id, 'desc') : null;
+        const name = cfgName || T(`vip.tasks.${item.id}.name`);
+        const desc = cfgDesc || T(`vip.tasks.${item.id}.desc`);
         main.innerHTML = `
           <div class="vip-task-name">${name}</div>
           <div class="vip-task-sub">${desc}</div>

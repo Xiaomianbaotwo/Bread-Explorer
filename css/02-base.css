@@ -41,6 +41,53 @@ body::before {
   to   { transform: translateX(16px) rotate(8deg); }
 }
 
+/* 【新增】20261119：背景 emoji 多方向漂浮
+   up / down / 四个对角方向；具体起点由 JS 设置 left / top。 */
+.bread.dir-down { animation-name: floatDown; }
+.bread.dir-dr   { animation-name: floatDR; }
+.bread.dir-dl   { animation-name: floatDL; }
+.bread.dir-ur   { animation-name: floatUR; }
+.bread.dir-ul   { animation-name: floatUL; }
+
+@keyframes floatDown {
+  0%   { transform: translate3d(0, -18vh, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translate3d(0, 105vh, 0) rotate(360deg); opacity: 0; }
+}
+@keyframes floatDR {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translate3d(124vw, 124vh, 0) rotate(360deg); opacity: 0; }
+}
+@keyframes floatDL {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translate3d(-124vw, 124vh, 0) rotate(360deg); opacity: 0; }
+}
+@keyframes floatUR {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translate3d(124vw, -124vh, 0) rotate(360deg); opacity: 0; }
+}
+@keyframes floatUL {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translate3d(-124vw, -124vh, 0) rotate(360deg); opacity: 0; }
+}
+
+/* 【新增】20261119：冬日雪境真实雪层（Canvas，不使用 emoji） */
+#snowLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .crumb {
   position: fixed; width: 7px; height: 7px; border-radius: 50%;
   background: #c88a3d; z-index: 99; pointer-events: none;

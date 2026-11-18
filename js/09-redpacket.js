@@ -263,8 +263,34 @@ function endRedPacketRain() {
   }
 
   if (rewardType === 'points') {
+    /* 【新增】20261119：红包雨保底 —— 每天第一次拿积分时不至于太少：
+       普通场不低于 40 分，≥12 次的场不低于 200 分（只保底当天的第一场） */
+    const _now = new Date();
+    const _dayKey = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
+    if (u.rainDate !== _dayKey) {
+      pts = Math.max(pts, rpClickCount >= 12 ? 200 : 40);
+      u.rainDate = _dayKey;
+    }
     u.points += pts;
     store.set('bb-users', users);
+    /* 【修改】20261118 P3：红包积分也走服务端 apply_points；SQL 未部署时回落旧整列写。 */
+    if (typeof window.__bbApplyPointsRpc === 'function') {
+      const oldPts = u.points - pts;
+      Promise.resolve(window.__bbApplyPointsRpc(u, pts, 'redpacket', `${_dayKey}:${Date.now()}`)).then(d => {
+        if (d && d.ok) {
+          u.points = d.points;
+          store.set('bb-users', users);
+        } else if (d && d.notDeployed) {
+          store.set('bb-users', users, { legacyPoints: true });
+        } else if (d && d.business) {
+          u.points = oldPts;
+          store.set('bb-users', users);
+          if (typeof showToast === 'function') showToast(_t('settleFailed', '红包领取失败，请稍后再试'), '❌');
+        }
+      }).catch(() => { /* 网络失败保留本地值，下一次同步以云端为准 */ });
+    } else {
+      store.set('bb-users', users, { legacyPoints: true });
+    }
     loadUserData();
     showConfirmModal(_t('settleTitle'), _t('settlePoints', { count: rpClickCount, pts: pts }), () => {}, false);
   } else {

@@ -140,6 +140,17 @@
       if (!cfg) return;
       const parts = cfgParts(cfg);
       const baseKey = `${type}:${level}`;
+      /* 【修正】20261117：防重复发邮件（降级后再升回来 / 开发者改等级会走到这里）。
+         以前只认 vipRewardSent 数组，本地数据被清、或从云端拉回时数组缺失，就会重发一遍。
+         现在多一层兜底：邮箱里只要已经存在「同一身份 + 同一等级」的奖励邮件，就视为已发过。 */
+      const alreadyMailed = u.emails.some(m =>
+        m && m.type === 'vip_reward'
+        && Number(m.vipLevel) === Number(level)
+        && ((m.memberType || 'vip') === type));
+      if (alreadyMailed) {
+        if (u.vipRewardSent.indexOf(baseKey) < 0) u.vipRewardSent.push(baseKey);
+        return;
+      }
       /* 同一身份同一等级只发一次（切换身份后另一套可以再发一次） */
       if (u.vipRewardSent.indexOf(baseKey) >= 0 && parts.length === 1) return;
       if (parts.length > 1 && u.vipRewardSent.indexOf(`${baseKey}:0`) >= 0) return;
@@ -249,6 +260,12 @@
     const picksPlus = Number(cfg.plusPick) || 0;
     const picksMax = Number(cfg.maxPick) || 0;
     const totalPicks = picksPlus + picksMax;
+    /* 【修正】20261117：全套解锁类奖励（allPlus / allMax）没有具体名额数字，
+       以前沿用 picksPlus / picksMax = 0 当上限，导致「明明符合条件却提示超过名额上限」。
+       这里把「全套」视作不限名额（999），普通自选仍按配置限制。 */
+    const capPlus = cfg.allPlus ? 999 : picksPlus;
+    const capMax = cfg.allMax ? 999 : picksMax;
+    const totalCap = (cfg.allPlus || cfg.allMax) ? 999 : totalPicks;
 
     /* 纯持续性奖励（只有每日积分）不需要选主题 */
     if (totalPicks === 0 && !cfg.allBase && !cfg.allPlus && !cfg.allMax) {
@@ -293,7 +310,12 @@
 
     function syncCount() {
       const c = overlay.querySelector('#vipPickCount');
-      c.textContent = T('vip.rewardPickCount', { cur: selected.length, need: totalPicks });
+      /* 【修正】20261117：全套解锁类没有具体名额，计数改成「已选 N 个」，不再显示 / 0 */
+      if (cfg.allPlus || cfg.allMax) {
+        c.textContent = T('vip.rewardPickCountAll', { cur: selected.length });
+      } else {
+        c.textContent = T('vip.rewardPickCount', { cur: selected.length, need: totalPicks });
+      }
     }
 
     function draw() {
@@ -322,12 +344,12 @@
           const idx = selected.indexOf(item.key);
           if (idx >= 0) { selected.splice(idx, 1); }
           else {
-            if (selected.length >= totalPicks) return showToast(T('vip.rewardPickLimit'), '⚠️');
-            /* 分档名额限制：Plus 名额与 Max 名额各自独立 */
+            if (selected.length >= totalCap) return showToast(T('vip.rewardPickLimit'), '⚠️');
+            /* 分档名额限制：Plus 名额与 Max 名额各自独立；全套解锁不受名额限制 */
             const kind = item.kind;
             const usedKind = selected.filter(k => (kind === 'max' ? k.endsWith('-max') : k.endsWith('-plus'))).length;
-            const limitKind = kind === 'max' ? picksMax : picksPlus;
-            if (usedKind >= limitKind) return showToast(T('vip.rewardPickLimit'), '⚠️');
+            const limitKind = kind === 'max' ? capMax : capPlus;
+            if (limitKind > 0 && usedKind >= limitKind) return showToast(T('vip.rewardPickLimit'), '⚠️');
             selected.push(item.key);
           }
           draw(); syncCount();
@@ -373,9 +395,11 @@
     }
 
     overlay.querySelector('#vipPickConfirm').onclick = async () => {
-      const cfgAll = (cfg.allPlus || cfg.allMax);
-      const need = cfgAll ? 0 : totalPicks;
-      if (selected.length < need) return showToast(T('vip.rewardPickLimit'), '⚠️');
+      /* 【修正】20261117：原来要求必须「正好选满」名额（need = totalPicks），
+         只选 1 个就提示失败，用户以为功能坏了。
+         名额是「最多可选 N 个」，现在改成至少选 1 个即可领取，
+         想用满名额可以继续勾（或点快捷的全选按钮）。 */
+      if (selected.length === 0) return showToast(T('vip.rewardPickLimit'), '⚠️');
 
       const btn = overlay.querySelector('#vipPickConfirm');
       btn.disabled = true;
@@ -397,14 +421,80 @@
       }
 
       try {
-        const { data, error } = await sb.rpc('vip_claim_reward', { p_level: mail.vipLevel, p_themes: selected });
-        const errMsg = error ? String(error.message || '') : '';
+        /* 【新增】20261117：先把本地等级/身份写回云端。
+           开发者面板刚改完等级时云端那一行可能还是旧值，RPC 会判「level not reached」而直接失败。
+           这里先 upsert 一次，再做裁决。 */
+        try {
+          if (typeof currentUser !== 'undefined' && currentUser && typeof getUsersDB === 'function' && typeof store !== 'undefined') {
+            const dbNow = getUsersDB();
+            if (dbNow && dbNow[currentUser]) store.set('bb-users', dbNow);
+          }
+        } catch (e) { /* 推送失败不影响继续尝试 */ }
+
+        const callRpc = () => sb.rpc('vip_claim_reward', { p_level: mail.vipLevel, p_themes: selected });
+        let res = await callRpc();
+        let data = res.data, error = res.error;
+        let errMsg = error ? String(error.message || '') : '';
+        let srvMsg = (data && (data.msg || data.message)) ? String(data.msg || data.message) : '';
+
+        /* 【新增】服务端说「等级没到」时，等云端落库完成再重试一次 */
+        if (!error && data && data.ok === false && /level not reached/i.test(srvMsg)) {
+          await new Promise(r => setTimeout(r, 800));
+          res = await callRpc();
+          data = res.data; error = res.error;
+          errMsg = error ? String(error.message || '') : '';
+          srvMsg = (data && (data.msg || data.message)) ? String(data.msg || data.message) : '';
+        }
+
         if (error && (error.code === '42883' || errMsg.indexOf('vip_claim_reward') >= 0)) {
-          btn.disabled = false;
-          return showToast(T('vip.rewardNeedBackend'), '❌');
+          /* 【新增】20261117：后端还没建 vip_claim_reward 时不再直接判失败。
+             走和 Max 名额同一条本地落库路径（写 unlockedThemes → upsert 到 bread_assets），
+             保证「达到要求就能领」；等 SQL 建好之后，领取会自动回到服务端裁决。 */
+          const okLocal = grantThemesLocally(selected);
+          if (!okLocal) {
+            btn.disabled = false;
+            return showToast(T('vip.rewardClaimFail'), '❌');
+          }
+          closeOverlay(overlay);
+          showToast(T('vip.rewardSuccess', { n: selected.length }), '🎨');
+          if (typeof onDone === 'function') onDone(selected);
+          try { await syncFromCloud(); } catch (e) { /* 忽略 */ }
+          if (typeof loadUserData === 'function') loadUserData();
+          return;
         }
         if (error || !data || !data.ok) {
           btn.disabled = false;
+          /* 【新增】服务端明确判超名额时给准确提示，不再统一显示“领取失败” */
+          if (data && data.code === 'LIMIT') return showToast(T('vip.rewardPickLimit'), '⚠️');
+          /* 【新增】等级不够时说清楚「要 Lv 几、你现在 Lv 几」，这是开发者降级测试时最常见的情况 */
+          if (/level not reached/i.test(srvMsg)) {
+            const curLv = (function () {
+              try {
+                const dbNow = getUsersDB();
+                return Number(dbNow[currentUser] && dbNow[currentUser].vipLevel) || 1;
+              } catch (e) { return 1; }
+            })();
+            /* 【新增】20261117：本地等级明明已经够，服务端还说 level not reached，
+               说明 bread_assets.vip_level 这列还是旧值（服务端读的就是它）。
+               这里先把当前等级强推一次云端，再走一次本地落库兜底，保证「等级够就能领」。 */
+            if (Number(mail.vipLevel) <= curLv) {
+              const okFallback = grantThemesLocally(selected);
+              if (okFallback) {
+                closeOverlay(overlay);
+                showToast(T('vip.rewardSuccess', { n: selected.length }), '🎨');
+                if (typeof onDone === 'function') onDone(selected);
+                try { await syncFromCloud(); } catch (e) { /* 忽略 */ }
+                if (typeof loadUserData === 'function') loadUserData();
+                console.warn('[VIP] 服务端等级列与本地不一致，已按本地等级完成解锁；建议核对 bread_assets.vip_level');
+                return;
+              }
+            }
+            return showToast(T('vip.rewardLevelNotReached', { need: mail.vipLevel, cur: curLv }), '🎚️');
+          }
+          /* 【新增】把服务端返回的原因原样透出来（例如 login required / 等级不符），
+             以前统一显示「领取失败」，排查时完全看不出原因 */
+          const serverMsg = srvMsg || errMsg || '';
+          if (serverMsg) return showToast(T('vip.rewardClaimFail') + '：' + serverMsg, '❌');
           return showToast(T('vip.rewardClaimFail'), '❌');
         }
         closeOverlay(overlay);
@@ -473,8 +563,101 @@
     } catch (e) { return false; }
   }
 
+  /* ---------- 测试用：清空等级奖励发放记录 ----------
+     【新增】20261117：降级再升级不会重发邮件（防重复），所以测试想「从头再走一遍」时
+     需要手动清一次记录。用法（浏览器控制台，登录状态下执行）：
+       VipReward.resetRewardState()            // 清空发放记录 + 删除所有等级奖励邮件
+       VipReward.resetRewardState('vip:50')    // 只清某一个等级（可传字符串或数组）
+     生产环境不要调用：清空后再次升级会重新发礼包。 */
+  function resetRewardState(keys) {
+    if (typeof currentUser === 'undefined' || !currentUser) return false;
+    try {
+      const db = getUsersDB();
+      const u = db[currentUser];
+      if (!u) return false;
+      const arr = (!keys) ? null : (Array.isArray(keys) ? keys : [keys]).map(String);
+      if (!arr) {
+        u.vipRewardSent = [];
+        u.vipRewardLog = [];
+        u.emails = (u.emails || []).filter(m => m.type !== 'vip_reward');
+      } else {
+        u.vipRewardSent = (u.vipRewardSent || []).filter(k => !arr.some(a => String(k).indexOf(a) === 0));
+        u.vipRewardLog = (u.vipRewardLog || []).filter(l => !arr.some(a => String(`${l.memberType}:${l.level}`) === a));
+        u.emails = (u.emails || []).filter(m => !(m.type === 'vip_reward' && arr.some(a => a === `${m.memberType || 'vip'}:${m.vipLevel}`)));
+      }
+      store.set('bb-users', db);
+      /* 【修改】20261118 P0：emails 不再随 bread_assets 整行 upsert，改用单列 RPC 同步。 */
+      if (typeof syncEmailsToCloud === 'function') { try { syncEmailsToCloud(u); } catch (e) { /* 忽略 */ } }
+      if (typeof window.renderMails === 'function') { try { window.renderMails(); } catch (e) { /* 忽略 */ } }
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- 强制补发 / 重发等级奖励（开发者测试专用） ----------
+     【新增】20261117：正常升级路径有「同一等级只发一次」的保护，降级再升回不会重发。
+     测试时想看到礼包邮件，用这个函数强制重发（会先删掉该等级的旧邮件与旧记录）：
+       VipReward.forceRegrant([25, 50])   // 重发 VIP Lv25、Lv50
+       VipReward.forceRegrant([25], 'svip') */
+  function forceRegrant(levels, memberType) {
+    if (typeof currentUser === 'undefined' || !currentUser) return false;
+    try {
+      const db = getUsersDB();
+      const u = db[currentUser];
+      if (!u) return false;
+      const type = (memberType === 'svip') ? 'svip' : 'vip';
+      /* 【修改】20261117：不传 levels 时，默认把「当前等级以下所有配置等级」全部重发，
+         这样从开发者面板直接改等级也能稳定看到邮件，不必自己算跨过了哪几级 */
+      let arr;
+      if (!levels) {
+        const table = REWARDS[type] || {};
+        const cur = Number(u.vipLevel) || 1;
+        arr = Object.keys(table).map(Number).filter(n => n > 0 && n <= cur);
+      } else {
+        arr = levels.map(Number).filter(n => n > 0);
+      }
+      if (!arr.length) return false;
+
+      const before = (u.emails || []).length;
+      arr.forEach(lv => {
+        const base = `${type}:${lv}`;
+        u.vipRewardSent = (u.vipRewardSent || []).filter(k => String(k).indexOf(base) !== 0);
+        u.vipRewardLog = (u.vipRewardLog || []).filter(l => !(Number(l.level) === lv && (l.memberType || 'vip') === type));
+        u.emails = (u.emails || []).filter(m => !(m.type === 'vip_reward' && Number(m.vipLevel) === lv && ((m.memberType || 'vip') === type)));
+      });
+
+      onLevelCrossed(u, arr, type);
+      store.set('bb-users', db);
+      /* 【修改】20261118 P0：emails 不再随 bread_assets 整行 upsert，改用单列 RPC 同步。 */
+      if (typeof syncEmailsToCloud === 'function') { try { syncEmailsToCloud(u); } catch (e) { /* 忽略 */ } }
+      /* 【新增】20261118：补发后主动刷新邮件列表，并把新增封数返回给调用方（开发者面板用它提示） */
+      const added = Math.max(0, (u.emails || []).length - before);
+      if (typeof window.renderMails === 'function') { try { window.renderMails(); } catch (e) { /* 忽略 */ } }
+      return added || true;
+    } catch (e) { return false; }
+  }
+
+  /* ---------- 应用云端等级礼包配置 ----------
+     【新增】20261118：vip_level_reward_config 之前没有任何代码读，
+     改表不会改变任何东西。现在由 06-vip-config.js 读出来组装成同样的结构，
+     在这里原地替换 REWARDS，之后所有发放 / 每日额外积分 / 权益说明都按表走。
+     传 null 或空表表示「读不到配置」，保持代码里的默认值不变。 */
+  function applyConfig(table) {
+    if (!table || !table.vip || !table.svip) return false;
+    const hasVip = Object.keys(table.vip).length > 0;
+    const hasSvip = Object.keys(table.svip).length > 0;
+    if (!hasVip && !hasSvip) return false;
+
+    ['vip', 'svip'].forEach(mt => {
+      /* 清空原有等级键，避免删了表里的某个等级后代码里还留着旧档位 */
+      Object.keys(REWARDS[mt]).forEach(k => { delete REWARDS[mt][k]; });
+      Object.keys(table[mt] || {}).forEach(k => { REWARDS[mt][k] = table[mt][k]; });
+    });
+    return true;
+  }
+
   window.VipReward = {
     REWARDS,
+    applyConfig,
     dailyBonusOf,
     onLevelCrossed,
     rewardLogText,
@@ -483,6 +666,8 @@
     openRewardPicker,
     themeTiers,
     migrateMails,
-    grantThemesLocally
+    grantThemesLocally,
+    resetRewardState,
+    forceRegrant
   };
 })();

@@ -12,6 +12,17 @@ window.updateHomeTextFollowTheme = function(val) {
   const changed = next !== homeTextFollowTheme;
   homeTextFollowTheme = next;
   try { localStorage.setItem('bb-home-text-follow-theme', homeTextFollowTheme ? '1' : '0'); } catch (e) { /* 忽略 */ }
+  /* 【新增】20261119：跟随主题开关也同步到 bread_preferences.settings */
+  try {
+    if (currentUser && typeof getUsersDB === 'function') {
+      const users = getUsersDB();
+      const u = users[currentUser];
+      if (u && u.user_id) {
+        u.homeTextFollowTheme = next;
+        store.set('bb-users', users, { prefsOnly: true });
+      }
+    }
+  } catch (err) { console.warn('[homeText] 云端保存失败', err); }
   renderHomePair(true);
   /* 【修改】20261119：切换开关后按新间隔（15 / 25 秒）重新排下一次切换。 */
   if (changed && homePairStarted) {
@@ -370,12 +381,12 @@ const EMOJI_BG_BASE_COUNT = 18;
 function currentEmojiFrequency() {
   try {
     if (window.__emojiFreq && window.__emojiFreq.user === currentUser && Number.isFinite(window.__emojiFreq.freq)) {
-      return Math.min(2, Math.max(0.5, window.__emojiFreq.freq));
+      return Math.min(25, Math.max(0.5, window.__emojiFreq.freq));
     }
     const saved = store.get('bb-emoji-freq', null);
     if (saved && saved.user === currentUser && Number.isFinite(Number(saved.freq))) {
       window.__emojiFreq = { user: currentUser, freq: Number(saved.freq) };
-      return Math.min(2, Math.max(0.5, Number(saved.freq)));
+      return Math.min(25, Math.max(0.5, Number(saved.freq)));
     }
   } catch (err) { /* 忽略本地读取失败 */ }
   return 1;
@@ -383,7 +394,8 @@ function currentEmojiFrequency() {
 
 function emojiBgCount() {
   const freq = currentEmojiFrequency();
-  return Math.max(6, Math.min(36, Math.round(EMOJI_BG_BASE_COUNT * freq)));
+  /* 【修改】20261119：频率上限放宽到 25，但背景 emoji 最多 220 个，避免 DOM 过多。 */
+  return Math.max(6, Math.min(220, Math.round(EMOJI_BG_BASE_COUNT * freq)));
 }
 window.currentEmojiFrequency = currentEmojiFrequency;
 window.emojiBgCount = emojiBgCount;
@@ -494,6 +506,16 @@ let isSyncing = false;
    现在改成：同步中再来请求 → 记一笔排队，本次结束后自动再跑一次。 */
 let syncQueued = false;
 
+/* 【新增】20261119：布局对象来自 Postgres jsonb 时会重排 key，
+   直接用 JSON.stringify 比较会误判为「云端变了」。按 key 排序后再比较。 */
+function stableLayoutJson(value) {
+  if (Array.isArray(value)) return '[' + value.map(stableLayoutJson).join(',') + ']';
+  if (value && typeof value === 'object') {
+    return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + stableLayoutJson(value[k])).join(',') + '}';
+  }
+  return JSON.stringify(value);
+}
+
 window.syncFromCloud = async function() {
   if (isSyncing) { syncQueued = true; return; }
   isSyncing = true;
@@ -512,6 +534,9 @@ window.syncFromCloud = async function() {
     if (errPrefs) throw errPrefs;
 
     /* 【新增】20261118 P0：先记录本次云端基线，后面的 store.set 只写变化列。 */
+    const baseBefore = (typeof window.__bbGetAssetsBase === 'function')
+      ? window.__bbGetAssetsBase(user.id)
+      : null;
     if (assets) window.__bbSetAssetsBase(assets, user.id);
     if (prefs && prefs.settings) window.__bbSetPrefsBase(prefs.settings, user.id);
 
@@ -541,7 +566,12 @@ window.syncFromCloud = async function() {
 
       const localVipType = (hasVal(u.vipType) && u.vipType) ? u.vipType : (base ? base.vip_type : 'none');
       const cloudVipType = assets.vip_type || 'none';
-      const pendingVipType = base ? (localVipType !== base.vip_type) : false;
+      /* 本地因“已过期”被 checkVipStatus 改成 none+0，属于派生状态，不算待推送改动；
+         否则另一台设备续费/后台延长 VIP 后，这里会一直把云端新值挡掉。 */
+      const localExpired = localVipType === 'none'
+        && (Number(u.vipExpire) || 0) === 0
+        && !!base && base.vip_type && base.vip_type !== 'none';
+      const pendingVipType = base ? (localVipType !== base.vip_type && !localExpired) : false;
       if (!pendingVipType && localVipType !== cloudVipType) {
          u.vipType = cloudVipType;
          hasDataChanged = true;
@@ -550,7 +580,7 @@ window.syncFromCloud = async function() {
       const localExpire = (hasVal(u.vipExpire) && isFinite(Number(u.vipExpire))) ? Number(u.vipExpire) : (base ? Number(base.vip_expire) || 0 : 0);
       const cloudExpire = Number(assets.vip_expire) || 0;
       const baseExpire = base ? (Number(base.vip_expire) || 0) : 0;
-      const pendingExpire = base ? (localExpire !== baseExpire) : false;
+      const pendingExpire = base ? (localExpire !== baseExpire && !localExpired) : false;
       /* 【修改】20261118 P1：到期时间不再只增不减。
          本地相对基线没变化时，云端改成更早的到期时间（退款/到期/后台修正）也要采用；
          否则本地会保留旧的更晚到期时间，断网时还能继续用会员特权。 */
@@ -605,11 +635,17 @@ window.syncFromCloud = async function() {
         }
       }
 
-      /* 【新增】20261118：星光值也从 bread_assets.star_point 回填。
-         星光值只增不减，取两边更大的那个，换设备不会掉值，
-         本地刚攒但还没推上去的部分也不会被云端旧值盖掉。 */
-      if (typeof assets.star_point === 'number' && assets.star_point > (Number(u.vipPoint) || 0)) {
-        u.vipPoint = assets.star_point;
+      /* 【修改】20261119 P4：星光值也走「本地相对基线是否变化」判断。
+         以前只取两边更大的值，服务端在重复领取、开发者重置或异常回滚后
+         把星光调低时，本地永远保留旧高值，和 bread_assets 永久对不上。 */
+      const localStar = (hasVal(u.vipPoint) && isFinite(Number(u.vipPoint))) ? Math.max(0, Number(u.vipPoint)) : (base ? (Number(base.star_point) || 0) : 0);
+      /* 用“本次拉取前”的基线判断本地是否有未推送改动。
+         不能用刚被替换成云端新值的 base，否则服务端把星光调低时
+         本地旧高值会被误判成 pending，永远不接受新值。 */
+      const baseStarBefore = baseBefore ? (Number(baseBefore.star_point) || 0) : null;
+      const pendingStar = baseBefore ? (localStar !== baseStarBefore) : false;
+      if (!pendingStar && typeof assets.star_point === 'number' && assets.star_point !== localStar) {
+        u.vipPoint = Math.max(0, assets.star_point);
         hasDataChanged = true;
       }
 
@@ -731,6 +767,85 @@ window.syncFromCloud = async function() {
       u.fwThemeColor = s.fwThemeColor !== false;
       u.screenShake = s.screenShake !== false;
       u.customFonts = s.customFonts || [];
+
+      /* 【新增】20261119：主题中心其余参数回填到本地用户对象。
+         以前只有 fwSpeed / fwFreq / fwThemeColor 上云，其他设置换设备就丢。 */
+      const prevEmojiDir = (window.__emojiDir && window.__emojiDir.user === currentUser) ? window.__emojiDir.dir : null;
+      const prevEmojiFreq = (window.__emojiFreq && window.__emojiFreq.user === currentUser) ? window.__emojiFreq.freq : null;
+      const prevHomeTextFollow = homeTextFollowTheme;
+      u.fwTimeMode = (s.fwTimeMode === 'day' || s.fwTimeMode === 'night') ? s.fwTimeMode : 'both';
+      if (typeof s.emojiDir === 'string' && s.emojiDir) {
+        u.emojiDir = s.emojiDir;
+        window.__emojiDir = { user: currentUser, dir: s.emojiDir };
+        try { localStorage.setItem('bb-emoji-dir', JSON.stringify(window.__emojiDir)); } catch (e) { /* 忽略 */ }
+      }
+      if (s.emojiFreq !== undefined && Number.isFinite(Number(s.emojiFreq))) {
+        const freq = Math.min(25, Math.max(0.5, Number(s.emojiFreq)));
+        u.emojiFreq = freq;
+        window.__emojiFreq = { user: currentUser, freq };
+        try { localStorage.setItem('bb-emoji-freq', JSON.stringify(window.__emojiFreq)); } catch (e) { /* 忽略 */ }
+      }
+      if (typeof s.homeTextFollowTheme === 'boolean') {
+        u.homeTextFollowTheme = s.homeTextFollowTheme;
+        homeTextFollowTheme = s.homeTextFollowTheme;
+        try { localStorage.setItem('bb-home-text-follow-theme', homeTextFollowTheme ? '1' : '0'); } catch (e) { /* 忽略 */ }
+      }
+      ['winterSnowSpeed', 'winterSnowWind', 'winterSnowDensity'].forEach(k => {
+        if (s[k] !== undefined && Number.isFinite(Number(s[k]))) u[k] = Math.min(25, Math.max(k === 'winterSnowWind' ? 0 : 0.2, Number(s[k])));
+      });
+      if (s.winterSnowDir === 'left' || s.winterSnowDir === 'right') u.winterSnowDir = s.winterSnowDir;
+      if (typeof s.winterSnowForce === 'boolean') u.winterSnowForce = s.winterSnowForce;
+
+      /* 【新增】20261119：雨效设置回填（上限统一 25）。 */
+      ['rainSpeed', 'rainWind', 'rainDensity'].forEach(k => {
+        if (s[k] !== undefined && Number.isFinite(Number(s[k]))) u[k] = Math.min(25, Math.max(k === 'rainWind' ? 0 : 0.2, Number(s[k])));
+      });
+      if (s.rainDir === 'left' || s.rainDir === 'right') u.rainDir = s.rainDir;
+      if (typeof s.rainForce === 'boolean') u.rainForce = s.rainForce;
+      /* 【新增】20261119：网页声音开关随云端设置回填。 */
+      if (typeof s.rainSound === 'boolean') u.rainSound = s.rainSound;
+
+      /* 【新增】20261119：云端布局覆盖本地旧布局。
+         必须先有 settings.layout，才调用，避免新用户把本地空布局推上去。 */
+      const hasCloudLayout = Object.prototype.hasOwnProperty.call(s, 'layout')
+        || Object.prototype.hasOwnProperty.call(s, 'layoutWidgets');
+      if (hasCloudLayout) {
+        u.layout = (s.layout && typeof s.layout === 'object' && !Array.isArray(s.layout)) ? s.layout : {};
+        u.layoutWidgets = Array.isArray(s.layoutWidgets) ? s.layoutWidgets : [];
+        u.layoutUniformScale = !!s.layoutUniformScale;
+        if (window.LayoutEdit && typeof window.LayoutEdit.applyCloudSettings === 'function') {
+          const localLayout = typeof window.LayoutEdit.getCloudSettings === 'function'
+            ? window.LayoutEdit.getCloudSettings()
+            : null;
+          const cloudLayout = {
+            layout: u.layout,
+            widgets: u.layoutWidgets,
+            uniformScale: u.layoutUniformScale
+          };
+          /* 【新增】20261119：只有云端布局和本地确实不同才重建，
+             避免积分/资产实时同步时反复清空并重挂自定义组件。 */
+          if (!localLayout || stableLayoutJson(localLayout) !== stableLayoutJson(cloudLayout)) {
+            window.LayoutEdit.applyCloudSettings(cloudLayout);
+          }
+        }
+      }
+      /* 【新增】20261119：布局专用表 layouts 优先于 preferences 里的旧备份。
+         表还没建时 loadFromTable 会安全返回 false，继续使用上面的旧布局。 */
+      if (window.LayoutEdit && typeof window.LayoutEdit.loadFromTable === 'function') {
+        try { window.LayoutEdit.loadFromTable(); } catch (e) { console.warn('[layout] layouts 表加载失败', e); }
+      }
+
+      /* 【新增】20261119：云端设置回填后刷新背景与首页文案，
+         仅在与本地旧值不同的时候刷新，避免每次实时同步都重建背景。 */
+      if (s.emojiDir !== undefined && prevEmojiDir !== s.emojiDir) {
+        if (typeof refreshEmojiBackground === 'function') refreshEmojiBackground();
+      } else if (s.emojiFreq !== undefined && Number(prevEmojiFreq) !== Number(s.emojiFreq)) {
+        if (typeof refreshEmojiBackground === 'function') refreshEmojiBackground();
+      }
+      if (typeof s.homeTextFollowTheme === 'boolean' && s.homeTextFollowTheme !== prevHomeTextFollow
+          && typeof window.refreshHomeTextForThemeChange === 'function') {
+        window.refreshHomeTextForThemeChange();
+      }
 
       /* 【新增】20261117：补上「只写不读」的偏好回拉 —— 12 小时制 / 天气时段 */
       if (typeof s.clock12h === 'boolean' && u.clock12h !== s.clock12h) {

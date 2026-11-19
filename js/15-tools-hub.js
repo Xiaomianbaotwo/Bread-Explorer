@@ -27,6 +27,18 @@ const TOOL_REGISTRY = [
     descKey: 'tools.articleDesc',
     url: './bread-article-appreciation/index.html',
     minBreadLevel: 30
+  },
+  /* 【新增】20261119：面包 AI 子站。
+     入口只要求主站账号已登录；进入子站后还要再输入当前账号的面包 Key + 密码。
+     当前阶段为基础框架预览，不调用任何 AI 模型。 */
+  {
+    id: 'bread-ai',
+    name: '面包 AI',
+    nameKey: 'tools.aiName',
+    icon: '✦',
+    desc: '多模型统一入口 · 基础框架预览',
+    descKey: 'tools.aiDesc',
+    url: './bread-ai/index.html'
   }
 ];
 

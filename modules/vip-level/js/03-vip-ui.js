@@ -356,7 +356,12 @@
           btn.textContent = T('vip.claim');
           btn.onclick = () => {
             const res = window.VipTasks.claimTask(item.id);
-            if (res.ok) showToast(fmt('vip.claimSuccess', { n: res.reward }), '⭐');
+            if (res.ok) {
+              const overflow = Math.max(0, Number(res.overflowPoints) || 0);
+              showToast(overflow > 0
+                ? T('vip.claimSuccessOverflow', { n: res.reward, points: overflow })
+                : fmt('vip.claimSuccess', { n: res.reward }), '⭐');
+            }
             else if (res.reason === 'not-member') showToast(T('vip.notMemberTip'), '🔒');
             else if (res.reason === 'claimed') showToast(T('vip.claimedToast'), '✅');
             else showToast(T('vip.actionFailed'), '❌');

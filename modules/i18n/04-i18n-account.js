@@ -138,6 +138,11 @@
           emojiFreq: '✨ Emoji 出现频率：',
           winterFxTitle: '❄️ 冬日雪境 · 雪效设置', winterSnowSpeed: '❄️ 下雪速度：', winterSnowWind: '🌬️ 风力：', winterSnowDir: '🧭 风向：', winterSnowRight: '向右吹', winterSnowLeft: '向左吹', winterSnowDensity: '❄️ 雪花频率：', winterSnowForce: '🎬 强制下雪（预览）：',
           winterSnowOn: '今日有雪：雪效已开启', winterSnowOff: '今日无雪：25% 概率下雪，可开启「强制下雪」预览', winterSnowPreview: '强制预览中：雪效已开启',
+          /* 【新增】20261119：雨效设置（中英双语） */
+          rainFxTitle: '🌧️ 雨天特效设置', rainSpeed: '🌧️ 下雨速度：', rainWind: '🌬️ 风力：', rainDir: '🧭 风向：', rainRight: '向右吹', rainLeft: '向左吹', rainDensity: '🌧️ 雨滴频率：', rainForce: '🎬 强制下雨（预览）：', rainSound: '🔊 网页声音（雨声 / 雷声）：',
+          rainSoundHint: '默认开启；下雨会播放雨声，夏季雷阵雨会播放雷声，关闭则全部静音。首次开启若没有声音，点一下页面即可。',
+          rainStateOn: '今日自动有雨：雨效已开启（自动降雨不会勾选“强制下雨”）', rainStateOff: '今日无雨：25% 概率下雨，可开启「强制下雨」预览', rainStatePreview: '强制预览中：雨效已开启',
+          rainForceHint: '“强制下雨”只用于预览；关闭它会结束今天的雨。自动降雨由每天 25% 抽签决定，开关保持关闭。',
           tierOnly: '「{{name}}」随 VIP / SVIP 会员解锁，不能单独用积分购买',
           tierVipOnly: '「{{name}}」随 VIP 会员解锁，会员期内可用',
           tierSvipOnly: '「{{name}}」随 SVIP 会员解锁，会员期内可用',
@@ -289,6 +294,11 @@
           emojiDir: '🌀 Background Emoji Direction:', emojiDirRandom: 'Random', emojiDirUp: 'Bottom → Top', emojiDirDown: 'Top → Bottom', emojiDirDR: 'Top-left → Bottom-right', emojiDirDL: 'Top-right → Bottom-left', emojiDirUR: 'Bottom-left → Top-right', emojiDirUL: 'Bottom-right → Top-left',
           winterFxTitle: '❄️ Winter Wonderland · Snow Settings', winterSnowSpeed: '❄️ Snow Speed:', winterSnowWind: '🌬️ Wind:', winterSnowDir: '🧭 Direction:', winterSnowRight: 'Blow Right', winterSnowLeft: 'Blow Left', winterSnowDensity: '❄️ Snow Density:', winterSnowForce: '🎬 Force Snow (Preview):',
           winterSnowOn: 'Snow is active today', winterSnowOff: 'No snow today: 25% daily chance — enable Force Snow to preview', winterSnowPreview: 'Preview forced: snow is active',
+          /* 【新增】20261119：rain effect settings (bilingual) */
+          rainFxTitle: '🌧️ Rain Effect Settings', rainSpeed: '🌧️ Rain Speed:', rainWind: '🌬️ Wind:', rainDir: '🧭 Direction:', rainRight: 'Blow Right', rainLeft: 'Blow Left', rainDensity: '🌧️ Rain Density:', rainForce: '🎬 Force Rain (Preview):', rainSound: '🔊 Website Sound (Rain / Thunder):',
+          rainSoundHint: 'Enabled by default. Rain plays ambient sound and summer thunderstorms play thunder; turn it off to mute everything. If you hear nothing on first load, click the page once.',
+          rainStateOn: 'Automatic rain today: active (the Force Rain switch stays off)', rainStateOff: 'No rain today: 25% daily chance — enable Force Rain to preview', rainStatePreview: 'Preview forced: rain is active',
+          rainForceHint: '“Force Rain” is for preview only; turning it off ends today’s rain. Automatic rain is decided by a 25% daily roll and keeps the switch off.',
           tierOnly: '"{{name}}" comes with VIP / SVIP membership and cannot be bought with points',
           tierVipOnly: '"{{name}}" comes with VIP membership and stays available while VIP is active',
           tierSvipOnly: '"{{name}}" comes with SVIP membership and stays available while SVIP is active',

@@ -68,7 +68,9 @@ window.__bbSetAssetsBase = function (assets, uid) {
     vip_expire: Number(assets.vip_expire) || 0,
     vip_level: Math.min(100, Math.max(1, Number(assets.vip_level) || 1)),
     star_point: Math.max(0, Number(assets.star_point) || 0),
-    unlocked_themes: Array.isArray(assets.unlocked_themes) ? assets.unlocked_themes.slice() : []
+    unlocked_themes: Array.isArray(assets.unlocked_themes) ? assets.unlocked_themes.slice() : [],
+    user_level: Math.min(60, Math.max(1, Number(assets.user_level) || 1)),
+    user_bake: Math.max(0, Number(assets.user_bake) || 0)
   };
 };
 
@@ -87,6 +89,127 @@ window.__bbGetAssetsBase = function (uid) {
 window.__bbSetAssetsPoints = function (points, uid) {
   if (!__bbAssetsBase || (uid && __bbAssetsBase.user_id !== uid)) return;
   __bbAssetsBase.points = Number(points) || 0;
+};
+
+/* 【新增】20261119 P4：服务端改完星光/等级/会员后同步基线，
+   避免下一次 store.set 把本地旧值当成“待推送资产”。 */
+window.__bbSetAssetsVip = function (level, point, uid) {
+  if (!__bbAssetsBase || (uid && __bbAssetsBase.user_id !== uid)) return;
+  __bbAssetsBase.vip_level = Math.min(100, Math.max(1, Number(level) || 1));
+  __bbAssetsBase.star_point = Math.max(0, Number(point) || 0);
+};
+
+window.__bbSetAssetsVipStatus = function (type, expire, uid) {
+  if (!__bbAssetsBase || (uid && __bbAssetsBase.user_id !== uid)) return;
+  __bbAssetsBase.vip_type = type || 'none';
+  __bbAssetsBase.vip_expire = Number(expire) || 0;
+};
+
+window.__bbSetAssetsLevel = function (level, bake, uid) {
+  if (!__bbAssetsBase || (uid && __bbAssetsBase.user_id !== uid)) return;
+  __bbAssetsBase.user_level = Math.min(60, Math.max(1, Number(level) || 1));
+  __bbAssetsBase.user_bake = Math.max(0, Number(bake) || 0);
+};
+
+/* 【新增】20261119 P4：星光值服务端入口。
+   本地先按原逻辑乐观更新，这里负责让服务端真正落库并校正基线。
+   【修改】20261119：优先调用 apply_star_v2，让 Lv100 满级后的溢出星光值自动转积分；
+   未部署 v2 时回退原 apply_star，保证旧环境仍然可用。
+   返回 { ok:true, level, point, points, overflowPoints } / { ok:false, notDeployed|business|network }。 */
+window.__bbApplyStarRpc = async function (u, amount, source) {
+  if (!u || !u.user_id || window.isLocalMode || typeof sb === 'undefined' || !sb.rpc) {
+    return { ok: false, local: true };
+  }
+  const n = Math.floor(Number(amount) || 0);
+  if (!n) return { ok: true, local: true };
+
+  let res;
+  try {
+    res = await sb.rpc('apply_star_v2', { p_amount: n, p_source: String(source || '') });
+  } catch (e) {
+    return { ok: false, network: true, error: e };
+  }
+
+  /* v2 未部署时回退旧函数；业务拒绝 / 网络错误不在这里盲目回退。 */
+  if (res && res.error) {
+    const code = res.error.code || '';
+    const msg = String(res.error.message || '');
+    if (code === 'PGRST202' || /could not find the function|does not exist/i.test(msg)) {
+      try {
+        res = await sb.rpc('apply_star', { p_amount: n, p_source: String(source || '') });
+      } catch (e) {
+        return { ok: false, network: true, error: e };
+      }
+    }
+  }
+
+  if (res && res.error) {
+    const code = res.error.code || '';
+    const msg = String(res.error.message || '');
+    if (code === 'PGRST202' || /could not find the function|does not exist/i.test(msg)) {
+      return { ok: false, notDeployed: true, error: res.error };
+    }
+    return { ok: false, network: true, error: res.error };
+  }
+
+  const d = res && res.data;
+  if (!d || d.ok !== true) {
+    return { ok: false, business: true, duplicate: !!(d && d.duplicate), msg: (d && (d.msg || d.message)) || 'star rejected' };
+  }
+
+  u.vipLevel = Math.min(100, Math.max(1, Number(d.level) || Number(u.vipLevel) || 1));
+  u.vipPoint = Math.max(0, Number(d.point) || 0);
+  window.__bbSetAssetsVip(u.vipLevel, u.vipPoint, u.user_id);
+
+  /* v2 会返回转换溢出后的权威积分；旧函数没有 points，保持本地原值。 */
+  const overflowPoints = Math.max(0, Number(d.overflowPoints) || 0);
+  if (d.points !== undefined && d.points !== null) {
+    u.points = Math.max(0, Number(d.points) || 0);
+    if (typeof window.__bbSetAssetsPoints === 'function') window.__bbSetAssetsPoints(u.points, u.user_id);
+  }
+
+  return {
+    ok: true,
+    level: u.vipLevel,
+    point: u.vipPoint,
+    points: u.points,
+    overflowStar: Math.max(0, Number(d.overflowStar) || 0),
+    overflowPoints,
+    levelUp: d.levelUp || []
+  };
+};
+
+/* 【新增】20261119 P4：红包雨 VIP 服务端入口。 */
+window.__bbApplyRedpacketVipRpc = async function (u, level, days) {
+  if (!u || !u.user_id || window.isLocalMode || typeof sb === 'undefined' || !sb.rpc) {
+    return { ok: false, local: true };
+  }
+
+  let res;
+  try {
+    res = await sb.rpc('apply_redpacket_vip', { p_level: Number(level), p_days: Number(days) });
+  } catch (e) {
+    return { ok: false, network: true, error: e };
+  }
+
+  if (res && res.error) {
+    const code = res.error.code || '';
+    const msg = String(res.error.message || '');
+    if (code === 'PGRST202' || /could not find the function|does not exist/i.test(msg)) {
+      return { ok: false, notDeployed: true, error: res.error };
+    }
+    return { ok: false, network: true, error: res.error };
+  }
+
+  const d = res && res.data;
+  if (!d || d.ok !== true) {
+    return { ok: false, business: true, duplicate: !!(d && d.duplicate), msg: (d && (d.msg || d.message)) || 'vip rejected' };
+  }
+
+  u.vipType = d.type || u.vipType;
+  u.vipExpire = Number(d.expire) || 0;
+  window.__bbSetAssetsVipStatus(u.vipType, u.vipExpire, u.user_id);
+  return { ok: true, type: u.vipType, expire: u.vipExpire };
 };
 
 /* 【新增】20261118 P3：积分服务端权威模式。
@@ -152,6 +275,8 @@ function __bbApplyAssetsPatch(patch) {
   if (patch.vip_level !== undefined) __bbAssetsBase.vip_level = Number(patch.vip_level) || 1;
   if (patch.star_point !== undefined) __bbAssetsBase.star_point = Number(patch.star_point) || 0;
   if (patch.unlocked_themes !== undefined) __bbAssetsBase.unlocked_themes = Array.isArray(patch.unlocked_themes) ? patch.unlocked_themes.slice() : [];
+  if (patch.user_level !== undefined) __bbAssetsBase.user_level = Number(patch.user_level) || 1;
+  if (patch.user_bake !== undefined) __bbAssetsBase.user_bake = Number(patch.user_bake) || 0;
 }
 
 const store = {
@@ -165,9 +290,8 @@ const store = {
 
       if (!currentUser) return Promise.resolve();
 
-      /* 【新增】20261119：纯本地外观偏好（如背景 emoji 漂浮方向）
-         不需要整表云端 upsert；避免一次下拉切换触发云同步 + realtime 回拉，
-         造成页面短时间卡死。 */
+      /* 【修改】20261119：skipCloud 仍用于确实不需要云端的临时外观值；
+         主题设置与布局改走下面的 prefsOnly 轻量通道。 */
       if (opts && opts.skipCloud) return Promise.resolve();
 
       /* 【修改】以前这里把 `bb-sites_` / `bb-history_` 的数组也当成「用户表」去取 v[currentUser]：
@@ -177,66 +301,54 @@ const store = {
       if (k.startsWith('bb-sites_'))   return pushSitesToCloud(Array.isArray(v) ? v : []);
       if (k.startsWith('bb-history_')) return pushHistoryToCloud(Array.isArray(v) ? v : []);
 
+      /* 【新增】20261119：只同步 bread_preferences.settings 的轻量通道。
+         布局编辑、Emoji 方向/频率、烟花时段、冬日雪效都走这里；
+         不碰 bread_users / bread_assets，避免一次外观设置触发整行资产写入。 */
+      if (k === 'bb-users' && opts && opts.prefsOnly) {
+        const u = v[currentUser];
+        if (!u || !u.user_id) return Promise.resolve();
+        if (typeof window.__bbHasPrefsBase === 'function' && !window.__bbHasPrefsBase(u.user_id)) {
+          console.warn('[store] 偏好基线尚未建立，跳过本次 settings 写入');
+          return Promise.resolve();
+        }
+        const prefsRow = prefsRowFromUser(u, { settingsOnly: true });
+        return sb.from('bread_preferences').upsert(prefsRow).then(({ error }) => {
+          if (error) throw error;
+          window.__bbSetPrefsBase(prefsRow.settings, u.user_id);
+        }).catch(err => {
+          console.error('偏好同步失败', err);
+          showSyncError(err && err.message ? err.message : String(err));
+        });
+      }
+
       if (k === 'bb-users') {
         const u = v[currentUser];
         if (!u || !u.user_id) return Promise.resolve();
 
-        /* 【修改】20261118 P0：不再无条件整行 upsert bread_assets。
-           只提交相对云端基线发生变化的列；没有任何变化就完全不碰 bread_assets。
-           这样换语言 / 换字体 / 打开邮件 / 改城市这类纯偏好动作，不会再把旧积分、
-           旧 VIP 等级、旧星光写回云端。 */
+        /* 【修改】20261119 P4：不再用 store.set 直接写 bread_assets 的任何数值资产。
+           原因：P4 已撤销 authenticated 对 points / star_point / vip_* / user_level /
+           user_bake 的 INSERT/UPDATE；这些字段现在只能由服务端 RPC 修改。
+           这里只保留两个安全的云端动作：
+           1) bread_users / bread_preferences 正常同步；
+           2) unlocked_themes 过渡期仍允许直写（面包币、等级邮件仍在本地解锁）。
+           积分、星光、VIP、面包等级分别走 apply_points / apply_star /
+           apply_redpacket_vip / user_add_bake。 */
         const forceAssets = !!(opts && opts.forceAssets);
         const write = () => {
           const base = window.__bbGetAssetsBase(u.user_id);
-          /* 【修改】20261118 P0：没有云端基线时（弱网游客态 / 新设备还没回拉），
-             任何 bread_users / bread_preferences / bread_assets 写入都可能拿默认值覆盖云端。
-             只有注册这种显式 forceAssets 的建行场景才允许在无基线时写。 */
+          /* 没有云端基线时（弱网游客态 / 新设备还没回拉），不写用户资产；
+             注册这种显式建行场景交给 init_user_assets RPC 建行。 */
           if (!base && !forceAssets) {
             console.warn('[store] 云端基线尚未建立，跳过本次用户数据写入');
             return Promise.resolve();
           }
-          const patch = { username: currentUser, user_id: u.user_id };
-          let changed = false;
-          const setCol = (col, val) => { patch[col] = val; changed = true; };
-          /* 【修改】20261118 P0：本地字段缺失（老版本快照 / 新设备装配前）不能当成 0 / none / []。
-             缺什么就用云端基线里的原值，避免一次普通保存把云端资产写成默认值。 */
-          const hasVal = v => v !== undefined && v !== null;
-          const points = hasVal(u.points) && isFinite(Number(u.points)) ? Number(u.points) : (base ? base.points : 0);
-          const vipType = (hasVal(u.vipType) && u.vipType) ? u.vipType : (base ? base.vip_type : 'none');
-          const vipExpire = hasVal(u.vipExpire) && isFinite(Number(u.vipExpire)) ? Number(u.vipExpire) : (base ? base.vip_expire : 0);
-          const vipLevel = hasVal(u.vipLevel) && Number(u.vipLevel) > 0
-            ? Math.min(100, Math.max(1, Number(u.vipLevel)))
-            : (base ? base.vip_level : 1);
-          const starPoint = hasVal(u.vipPoint) && isFinite(Number(u.vipPoint))
-            ? Math.max(0, Number(u.vipPoint))
-            : (base ? base.star_point : 0);
+
+          /* 主题是 P4 过渡期唯一还允许客户端直写的资产列。
+             缺字段时用基线，避免一次普通保存把云端主题写成空数组。 */
           const themes = Array.isArray(u.unlockedThemes)
             ? u.unlockedThemes
             : (base ? base.unlocked_themes : []);
-          /* 【修改】20261118 P3：默认不再从客户端提交 points。
-             积分只能由服务端 apply_points / 购买 / 兑换 RPC 修改；
-             只有本地模式、注册建行（points 必须 0）或显式 legacyPoints 才允许带 points。 */
-          const includePoints = !!(opts && opts.legacyPoints) || !!window.isLocalMode || forceAssets;
-          const pointsForWrite = forceAssets ? 0 : points;
-
-          if (forceAssets) {
-            /* 【修改】20261118 P3：新用户建行也不从客户端写 points，交给数据库默认值 0；
-               配合列级权限，authenticated 对 points 没有 INSERT/UPDATE 权限。 */
-            setCol('vip_type', vipType);
-            setCol('vip_expire', vipExpire);
-            setCol('unlocked_themes', themes);
-            setCol('vip_level', vipLevel);
-            setCol('star_point', starPoint);
-          } else if (base) {
-            if (includePoints && pointsForWrite !== base.points) setCol('points', pointsForWrite);
-            if (vipType !== base.vip_type) setCol('vip_type', vipType);
-            if (vipExpire !== base.vip_expire) setCol('vip_expire', vipExpire);
-            if (vipLevel !== base.vip_level) setCol('vip_level', vipLevel);
-            if (starPoint !== base.star_point) setCol('star_point', starPoint);
-            if (!__bbSameArray(themes, base.unlocked_themes)) setCol('unlocked_themes', themes);
-          }
-          /* 没有 base 时：这次不写 assets，避免默认值覆盖云端。
-             注册流程用 opts.forceAssets 显式建行；正常登录由 startCloudSync 先建 base。 */
+          const themeChanged = !!base && !__bbSameArray(themes, base.unlocked_themes);
 
           const prefsRow = prefsRowFromUser(u);
           const jobs = [
@@ -247,10 +359,15 @@ const store = {
             }),
             sb.from('bread_preferences').upsert(prefsRow)
           ];
-          if (changed) jobs.splice(1, 0, sb.from('bread_assets').upsert(patch));
+          /* 只更新主题列，绝不碰积分 / 星光 / VIP / 等级列。 */
+          if (themeChanged) {
+            jobs.splice(1, 0, sb.from('bread_assets')
+              .update({ unlocked_themes: themes })
+              .eq('user_id', u.user_id));
+          }
 
           return Promise.all(jobs).then(() => {
-            if (changed) __bbApplyAssetsPatch(patch);
+            if (themeChanged) __bbApplyAssetsPatch({ user_id: u.user_id, unlocked_themes: themes });
             window.__bbSetPrefsBase(prefsRow.settings, u.user_id);
           }).catch(err => {
             console.error('云端同步失败', err);
@@ -304,7 +421,33 @@ function prefsRowFromUser(u, over) {
     username: currentUser, user_id: u.user_id,
     current_theme: over.current_theme !== undefined ? over.current_theme : (u.currentTheme || base.current_theme || 'default'),
     settings: {
-      enFont: pick('enFont', 'default'), zhFont: pick('zhFont', 'default'), fwSpeed: pick('fwSpeed', 1.0), fwFreq: pick('fwFreq', 1.0), fwThemeColor: pick('fwThemeColor', true),
+      enFont: pick('enFont', 'default'), zhFont: pick('zhFont', 'default'),
+      /* 【修改】20261119：烟花速度 / 频率上限放宽到 25，保存时统一夹取。 */
+      fwSpeed: Math.min(25, Math.max(0.1, Number(pick('fwSpeed', 1)) || 1)),
+      fwFreq: Math.min(25, Math.max(0.1, Number(pick('fwFreq', 1)) || 1)),
+      fwThemeColor: pick('fwThemeColor', true),
+      /* 【新增】20261119：主题中心的烟花时段也上云；以前只放本地，换设备会丢。 */
+      fwTimeMode: pick('fwTimeMode', 'both'),
+      /* 【新增】20261119：背景 Emoji 方向 / 频率上云，换设备保持一致。 */
+      emojiDir: pick('emojiDir', 'up'),
+      emojiFreq: Math.min(25, Math.max(0.5, Number(pick('emojiFreq', 1)) || 1)),
+      /* 【新增】20261119：问候语 / 心情短句是否跟随主题。 */
+      homeTextFollowTheme: pick('homeTextFollowTheme', false),
+      /* 【新增】20261119：冬日雪效参数上云；这些以前只在 bb-users 本地字段里。
+         上限统一放宽到 25。 */
+      winterSnowSpeed: Math.min(25, Math.max(0.2, Number(pick('winterSnowSpeed', 1)) || 1)),
+      winterSnowWind: Math.min(25, Math.max(0, Number(pick('winterSnowWind', 0.5)) || 0)),
+      winterSnowDir: pick('winterSnowDir', 'right'),
+      winterSnowDensity: Math.min(25, Math.max(0.2, Number(pick('winterSnowDensity', 1)) || 1)),
+      winterSnowForce: pick('winterSnowForce', false),
+      /* 【新增】20261119：雨效参数上云（绿野仙踪 / 春日花信 / 盛夏海岸 / 秋日私语）。 */
+      rainSpeed: Math.min(25, Math.max(0.2, Number(pick('rainSpeed', 1)) || 1)),
+      rainWind: Math.min(25, Math.max(0, Number(pick('rainWind', 0.5)) || 0)),
+      rainDir: pick('rainDir', 'right'),
+      rainDensity: Math.min(25, Math.max(0.2, Number(pick('rainDensity', 1)) || 1)),
+      rainForce: pick('rainForce', false),
+      /* 【新增】20261119：网页声音开关（雨声 / 雷声）也保存到云端；默认开启。 */
+      rainSound: pick('rainSound', true),
       screenShake: pick('screenShake', true),
       customFonts: u.customFonts !== undefined ? (u.customFonts || []) : (base.customFonts || []),
       lastRpDate: pick('lastRpDate', ''), rpCount: pick('rpCount', 0),
@@ -315,7 +458,12 @@ function prefsRowFromUser(u, over) {
       lang: (localStorage.getItem('bb-language') || 'zh'),
       /* VIP 等级 / 星光值（MC 经验条模型：level + point），jsonb 内存放，不额外建表 */
       vipLevel: Math.min(100, Math.max(1, Number(u.vipLevel) || Number(base.vipLevel) || 1)),
-      vipPoint: Math.max(Number(u.vipPoint) || 0, Number(base.vipPoint) || 0),
+      /* 【修改】20261119 P4：不再对本地/云端取最大值。
+           bread_assets.star_point 已是权威值；取 max 会把开发者重置、
+           重复领取回滚后的旧本地高值永久留在 settings 里。 */
+      vipPoint: (u.vipPoint !== undefined && u.vipPoint !== null)
+        ? Math.max(0, Number(u.vipPoint) || 0)
+        : Math.max(0, Number(base.vipPoint) || 0),
       vipAppliedType: u.vipAppliedType || base.vipAppliedType || (u.vipType || 'none'),
       vipTaskState: u.vipTaskState !== undefined ? u.vipTaskState : (base.vipTaskState || {}),
       /* 【新增】20261118：积分兑星光的每日额度也上云，换设备才不会「今日已兑」被重置 */
@@ -325,6 +473,25 @@ function prefsRowFromUser(u, over) {
       bio: u.bio !== undefined ? u.bio : (base.bio || '')
     }
   };
+  /* 【新增】20261119：布局字段只在「本地有布局」或「云端已有布局」时才写，
+     避免普通字体/语言设置保存时顺手写入空布局，把另一台设备的布局清掉。
+     bread_preferences.settings 是 jsonb，不需要额外加表列。 */
+  if (u.layout !== undefined || base.layout !== undefined) {
+    row.settings.layout = (u.layout !== undefined ? u.layout : base.layout) || {};
+  }
+  if (u.layoutWidgets !== undefined || Array.isArray(base.layoutWidgets)) {
+    row.settings.layoutWidgets = Array.isArray(u.layoutWidgets)
+      ? u.layoutWidgets
+      : (Array.isArray(base.layoutWidgets) ? base.layoutWidgets : []);
+  }
+  if (u.layoutUniformScale !== undefined || base.layoutUniformScale !== undefined) {
+    row.settings.layoutUniformScale = u.layoutUniformScale !== undefined
+      ? !!u.layoutUniformScale
+      : !!base.layoutUniformScale;
+  }
+  /* 【新增】20261119：轻量 settings 通道不带 sites / history，
+     避免只改一个 Emoji 设置却把本地可能过期的面包篮整列写回去。 */
+  if (over.settingsOnly) return row;
   const sitesVal = over.sites !== undefined ? over.sites
     : (u.sites !== undefined ? u.sites : local(`bb-sites_${currentUser}`));
   if (sitesVal !== undefined && sitesVal !== null) row.sites = sitesVal;

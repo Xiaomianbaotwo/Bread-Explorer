@@ -109,6 +109,11 @@
         if (typeof window.__bbSetAssetsPoints === 'function') window.__bbSetAssetsPoints(u.points, u.user_id);
         u.vipLevel = Math.min(100, Math.max(1, Number(d.level) || Number(u.vipLevel) || 1));
         u.vipPoint = Math.max(0, Number(d.point) || 0);
+        /* 【新增】20261119 P4：store.set 不再直写 vip_level / star_point，
+           这里手动把服务端兑换后的权威值同步进本地资产基线。 */
+        if (typeof window.__bbSetAssetsVip === 'function') {
+          window.__bbSetAssetsVip(u.vipLevel, u.vipPoint, u.user_id);
+        }
         const key = todayKey();
         u.starExchange = {
           date: key,

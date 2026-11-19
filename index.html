@@ -7,7 +7,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>%F0%9F%8D%9E</text></svg>">
   
   <link rel="stylesheet" href="css/01-vars.css?v=20261119-season1">
-  <link rel="stylesheet" href="css/02-base.css">
+  <link rel="stylesheet" href="css/02-base.css?v=20261119-rain1">
   <link rel="stylesheet" href="css/03-layout.css">
   <link rel="stylesheet" href="css/04-modals.css">
   <link rel="stylesheet" href="css/05-effects.css">
@@ -335,11 +335,11 @@
         <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--accent);" data-i18n="modals.fwSettings">⚙️ 当前主题烟花参数设置 (0.1 - 5.0 倍)</h4>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwSpeed">🚀 升空速度：</span>
-          <input type="number" id="fwSpeedInput" min="0.1" max="5" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
+          <input type="number" id="fwSpeedInput" min="0.1" max="25" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwFreq">🎆 发射频率：</span>
-          <input type="number" id="fwFreqInput" min="0.1" max="5" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
+          <input type="number" id="fwFreqInput" min="0.1" max="25" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top: 4px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.fwThemeColor">🎨 适配主题颜色：</span>
@@ -373,7 +373,7 @@
         <!-- 【新增】20261119：背景 Emoji 出现频率（只影响数量，不触发云端同步） -->
         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.emojiFreq">✨ Emoji 出现频率：</span>
-          <input type="number" id="emojiFreqInput" min="0.5" max="2" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+          <input type="number" id="emojiFreqInput" min="0.5" max="25" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
         </div>
       </div>
 
@@ -387,16 +387,26 @@
       </div>
 
 
+      <!-- 【新增】20261119：网页声音总开关（雨声 / 雷声），所有主题通用 -->
+      <div id="webSoundArea" style="margin-top: 14px; background: rgba(0,0,0,0.04); padding: 13px 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainSound">🔊 网页声音（雨声 / 雷声）：</span>
+          <input type="checkbox" id="rainSound" class="bb-switch" checked>
+        </div>
+        <div style="font-size:11px; color:var(--ink-soft); margin-top:7px; line-height:1.5;" data-i18n="modals.rainSoundHint">默认开启；下雨会播放雨声，夏季雷阵雨会播放雷声，关闭则全部静音。首次开启若没有声音，点一下页面即可。</div>
+      </div>
+
+
       <div id="winterConfigArea" style="display:none; margin-top: 14px; background: rgba(0,0,0,0.04); padding: 15px; border-radius: 12px; border: 1px dashed var(--accent);">
         <h4 style="font-size:14px; margin-bottom:10px; color:var(--accent);" data-i18n="modals.winterFxTitle">❄️ 冬日雪境 · 雪效设置</h4>
         <div style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;" id="winterSnowState"></div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowSpeed">❄️ 下雪速度：</span>
-          <input type="number" id="winterSnowSpeed" min="0.2" max="2.5" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+          <input type="number" id="winterSnowSpeed" min="0.2" max="25" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowWind">🌬️ 风力：</span>
-          <input type="number" id="winterSnowWind" min="0" max="2" step="0.1" value="0.5" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+          <input type="number" id="winterSnowWind" min="0" max="25" step="0.1" value="0.5" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowDir">🧭 风向：</span>
@@ -407,11 +417,40 @@
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowDensity">❄️ 雪花频率：</span>
-          <input type="number" id="winterSnowDensity" min="0.2" max="2.5" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+          <input type="number" id="winterSnowDensity" min="0.2" max="25" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:13px; font-weight:600;" data-i18n="modals.winterSnowForce">🎬 强制下雪（预览）：</span>
           <input type="checkbox" id="winterSnowForce" class="bb-switch">
+        </div>
+      </div>
+
+      <!-- 【新增】20261119：雨效设置（绿野仙踪 / 春日花信 / 盛夏海岸 / 秋日私语） -->
+      <div id="rainConfigArea" style="display:none; margin-top: 14px; background: rgba(0,0,0,0.04); padding: 15px; border-radius: 12px; border: 1px dashed var(--accent);">
+        <h4 style="font-size:14px; margin-bottom:10px; color:var(--accent);" data-i18n="modals.rainFxTitle">🌧️ 雨天特效设置</h4>
+        <div style="font-size:12px; color:var(--ink-soft); margin-bottom:12px;" id="rainState"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainSpeed">🌧️ 下雨速度：</span>
+          <input type="number" id="rainSpeed" min="0.2" max="25" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainWind">🌬️ 风力：</span>
+          <input type="number" id="rainWind" min="0" max="25" step="0.1" value="0.5" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainDir">🧭 风向：</span>
+          <select id="rainDir" style="width:120px; padding:7px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); font-size:13px; outline:none;">
+            <option value="right" data-i18n="modals.rainRight">向右吹</option>
+            <option value="left" data-i18n="modals.rainLeft">向左吹</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainDensity">🌧️ 雨滴频率：</span>
+          <input type="number" id="rainDensity" min="0.2" max="25" step="0.1" value="1" style="width:90px; padding:6px 10px; border-radius:8px; border:1px solid var(--card-border); background:var(--card); color:var(--ink); text-align:center; font-size:14px; font-weight:bold; outline:none;">
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:13px; font-weight:600;" data-i18n="modals.rainForce">🎬 强制下雨（预览）：</span>
+          <input type="checkbox" id="rainForce" class="bb-switch">
         </div>
       </div>
       
@@ -640,25 +679,26 @@
   <div class="toast" id="toast"></div>
 
   <!-- ================= 脚本加载区 ================= -->
-  <script src="js/01-core.js" defer></script>
+  <script src="js/01-core.js?v=20261119-max1" defer></script>
   <script src="js/02-config.js?v=20261119-season1" defer></script>
   <!-- 【新增】内测功能开关（好友系统 / 查询天气工具）：必须早于 15-tools-hub 与 modules/friend 加载 -->
   <script src="js/16-feature-flags.js" defer></script>
   <script src="js/03-ui.js" defer></script>
-  <script src="js/04-auth.js?v=20261119-themecode3" defer></script>
+  <script src="js/04-auth.js?v=20261119-max1" defer></script>
   <!-- 【新增】20261118：编辑布局（Beta）开关与自由拖拽 -->
-  <script src="js/17-layout-edit.js?v=20261119-sync2" defer></script>
-  <script src="js/05-font-theme.js" defer></script>
-  <script src="js/18-winter.js" defer></script>
+  <script src="js/17-layout-edit.js?v=20261119-layouts1" defer></script>
+  <script src="js/05-font-theme.js?v=20261119-max1" defer></script>
+  <script src="js/18-winter.js?v=20261119-max1" defer></script>
+  <script src="js/21-rain.js?v=20261119-rain1" defer></script>
   <script src="js/06-sites.js" defer></script>
   <script src="js/07-mail.js" defer></script>
   <script src="js/08-points.js" defer></script>
   <script src="js/09-redpacket.js" defer></script>
-  <script src="js/10-dev.js?v=20261119-themecode5" defer></script>
+  <script src="js/10-dev.js?v=20261119-max1" defer></script>
   <script src="js/12-fireworks.js?v=20261119-season3" defer></script>
   <script src="js/19-home-text.js?v=20261119-home3" defer></script>
   <script src="js/20-theme-home-text.js?v=20261119-theme-unified1" defer></script>
-  <script src="js/11-init.js?v=20261119-home11" defer></script>
+  <script src="js/11-init.js?v=20261119-layouts1" defer></script>
   <script src="js/13-updater.js" defer></script>
   <!-- 【修复】i18next + 词典必须排在 14-loading.js 之前：
        否则加载页（尤其游客/未登录分支）会在 _loadT 还是占位桩时就写文案，
@@ -673,32 +713,32 @@
   <script src="modules/i18n/04-i18n-account.js?v=20261119-home10" defer></script>
   <script src="modules/i18n/05-i18n-system.js?v=20261119-themecode2" defer></script>
   <!-- 【新增】VIP 等级体系词条（星光值）：中英成对放在同一文件，必须在 06-i18n-init 之前 -->
-  <script src="modules/i18n/07-i18n-vip.js" defer></script>
-  <script src="modules/bread-level/js/06-bread-i18n.js" defer></script>
+  <script src="modules/i18n/07-i18n-vip.js?v=20261119-max1" defer></script>
+  <script src="modules/bread-level/js/06-bread-i18n.js?v=20261119-max1" defer></script>
   <script src="modules/point-center/js/05-point-i18n.js" defer></script>
   <script src="modules/i18n/06-i18n-init.js" defer></script>
-  <script src="js/14-loading.js?v=20261119-home8" defer></script>
+  <script src="js/14-loading.js?v=20261119-max1" defer></script>
   <script src="js/15-tools-hub.js" defer></script>
 
   <!-- 【新增】VIP 等级成长体系（1~100 级 / 星光值 point 模型）
        顺序：01 计算内核 → 02 任务体系 → 04 等级奖励 → 03 面板 UI（UI 依赖前面三者，必须最后） -->
-  <script src="modules/vip-level/js/01-vip-core.js" defer></script>
+  <script src="modules/vip-level/js/01-vip-core.js?v=20261119-max1" defer></script>
   <!-- 【新增】20261118：云端配置（任务表 / 等级礼包表）必须在任务与礼包模块之前加载 -->
   <script src="modules/vip-level/js/06-vip-config.js" defer></script>
-  <script src="modules/vip-level/js/02-vip-task.js" defer></script>
+  <script src="modules/vip-level/js/02-vip-task.js?v=20261119-max1" defer></script>
   <script src="modules/vip-level/js/04-vip-mail-reward.js" defer></script>
   <script src="modules/vip-level/js/05-vip-star-exchange.js" defer></script>
   <!-- 【新增】20261118：面包等级（普通用户等级），与 VIP 等级独立并存 -->
   <script src="modules/bread-level/js/02-bread-config.js" defer></script>
   <script src="modules/bread-level/js/01-bread-core.js" defer></script>
-  <script src="modules/bread-level/js/03-bread-task.js" defer></script>
+  <script src="modules/bread-level/js/03-bread-task.js?v=20261119-max1" defer></script>
   <script src="modules/bread-level/js/04-bread-ui.js" defer></script>
   <script src="modules/bread-level/js/05-bread-mail.js" defer></script>
   <script src="modules/point-center/js/01-point-core.js" defer></script>
   <script src="modules/point-center/js/02-point-config.js" defer></script>
   <script src="modules/point-center/js/03-point-task.js" defer></script>
   <script src="modules/point-center/js/04-point-ui.js" defer></script>
-  <script src="modules/vip-level/js/03-vip-ui.js" defer></script>
+  <script src="modules/vip-level/js/03-vip-ui.js?v=20261119-max1" defer></script>
 
   
   <!-- 【修改】好友模块从 js/friend-system/ 迁到根目录 modules/friend/js/，并按职责拆细：

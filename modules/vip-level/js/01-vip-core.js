@@ -33,6 +33,10 @@
     /* 【修改】非会员没有等级进度可言：明确返回 0，避免外部误读成「Lv1 已解锁 100」 */
     if (memberType !== 'vip' && memberType !== 'svip') return 0;
     const lv = Math.min(MAX_LEVEL, Math.max(1, Number(level) || 1));
+    /* 【修改】20261119：Lv100 满级统一按 4000 星光值上限，和服务端 apply_star 对齐；
+       原先后端允许攒到 4000，前端 capOf 却按 VIP 曲线算成 2000，
+       会把满级玩家已有的 2000~4000 星光值误判成溢出。 */
+    if (lv >= MAX_LEVEL) return 4000;
     const group = Math.ceil(lv / GROUP_SIZE);           // 第几个 5 级区间，从 1 开始
     const step = (memberType === 'svip') ? STEP_SVIP : STEP_VIP;
     return step * group;
@@ -75,14 +79,15 @@
   }
 
   /* ---------- 归一化：point 达到本级上限就升级，溢出继续连锁 ----------
-     返回从旧等级到新等级之间「跨过」的等级列表（用于补发等级奖励邮件） */
+     返回 { crossed: 从旧等级到新等级之间「跨过」的等级列表, overflowPoint: 满级后溢出星光 } */
   function normalize(u, memberType) {
     const type = (memberType === 'svip') ? 'svip' : (memberType === 'vip' ? 'vip' : 'none');
     const crossed = [];
+    let overflowPoint = 0;
     if (type === 'none') {
       /* 非会员不参与成长；point 原样留着，等再次开通会员继续用 */
       u.vipPoint = Math.max(0, Number(u.vipPoint) || 0);
-      return crossed;
+      return { crossed, overflowPoint };
     }
     let guard = 0;
     while (u.vipLevel < MAX_LEVEL && guard++ < MAX_LEVEL + 5) {
@@ -93,11 +98,17 @@
       crossed.push(u.vipLevel);
     }
     /* 满级后不再升级：星光值允许一直攒到本级上限（4000），进度条显示满格；
-       【修改】20261119：原来封顶在 cap - 1（3999），导致永远显示 3999/4000、拿不到满值。 */
+       【修改】20261119：满级后超过 4000 的部分不再直接丢弃，
+       先记到 overflowPoint，由 addStar 按 1 星光值 = 3 积分转换。 */
     if (u.vipLevel >= MAX_LEVEL) {
-      u.vipPoint = Math.min(u.vipPoint, capOf(MAX_LEVEL, type));
+      const maxPoint = capOf(MAX_LEVEL, type);
+      if (u.vipPoint > maxPoint) {
+        overflowPoint = u.vipPoint - maxPoint;
+        u.vipPoint = maxPoint;
+      }
+      u.vipPoint = Math.min(u.vipPoint, maxPoint);
     }
-    return crossed;
+    return { crossed, overflowPoint };
   }
 
   /* 保存到本地用户库（store.set 会顺带把用户数据写回云端） */
@@ -151,8 +162,21 @@
     syncIdentity(u);
 
     const oldLevel = u.vipLevel;
+    const oldPoint = u.vipPoint;
     u.vipPoint += gain;
-    const crossed = normalize(u, memberTypeOf(u));
+    const norm = normalize(u, memberTypeOf(u));
+    const crossed = norm.crossed;
+    const overflowStar = norm.overflowPoint;
+    const overflowPoints = Math.max(0, overflowStar) * 3;  /* 1 星光值 = 3 积分 */
+
+    /* 【新增】20261119：Lv100 满级后溢出星光值本地先转积分；
+       服务端 apply_star_v2 会返回权威 points，异步回包后再覆盖。 */
+    if (overflowPoints > 0) {
+      u.points = (Number(u.points) || 0) + overflowPoints;
+      if (typeof window.__bbSetAssetsPoints === 'function') {
+        window.__bbSetAssetsPoints(u.points, u.user_id);
+      }
+    }
 
     /* 升级后触发等级奖励邮件（由 04-vip-mail-reward.js 注册的处理函数接管） */
     if (crossed.length && typeof window.VipReward !== 'undefined'
@@ -162,6 +186,52 @@
     }
 
     persist(u);
+
+    /* 【新增】20261119 P4：星光值不能再由 store.set 直接写云端。
+       本地保留乐观计算保证 UI 立即响应，同时异步调用 apply_star 落库；
+       服务端返回等级/星光后再校正本地基线。重复领取或网络失败时，
+       下一次 syncFromCloud 会以服务端值为准。
+       exchange: 来源是 exchange_star RPC 未部署时的本地回退，不能再调
+       apply_star，否则会被服务端当成非法来源拒绝。 */
+    if (typeof window.__bbApplyStarRpc === 'function' && String(source || '').indexOf('exchange:') !== 0) {
+      Promise.resolve(window.__bbApplyStarRpc(u, gain, source || '')).then(d => {
+        /* 【修复】20261119：异步回包必须重新取「当前」用户记录再落盘。
+           原来这里直接 persist(u)，u 是发起 addStar 时的旧快照；
+           用户领取任务后，领取标记写在 claimTask 新读到的记录里，
+           等 RPC 回来再用旧快照 persist，会把 claimed 标记覆盖掉，
+           表现为「领了第一个任务，再领第二个，第一个又变成未领取」。
+           这里改成 currentRecord()，把等级/星光写回最新记录，保留任务领取状态。 */
+        const latest = currentRecord();
+        const target = latest ? latest.u : u;
+        if (d && d.ok) {
+          target.vipLevel = d.level;
+          target.vipPoint = d.point;
+          /* v2 返回溢出转换后的权威积分；旧函数没有 points 就保持最新记录原值。 */
+          if (d.points !== undefined && d.points !== null) {
+            target.points = Math.max(0, Number(d.points) || 0);
+            if (typeof window.__bbSetAssetsPoints === 'function') {
+              window.__bbSetAssetsPoints(target.points, target.user_id);
+            }
+          }
+          persist(target);
+        } else if (d && d.business && typeof syncFromCloud === 'function') {
+          /* 服务端拒绝（例如同一周期已经领过），回滚本地乐观值后再回拉。
+             优先回到云端基线，避免旧本地高值继续污染下一次同步。 */
+          const base = (typeof window.__bbGetAssetsBase === 'function')
+            ? window.__bbGetAssetsBase(target.user_id)
+            : null;
+          if (base) {
+            target.vipLevel = Math.min(100, Math.max(1, Number(base.vip_level) || 1));
+            target.vipPoint = Math.max(0, Number(base.star_point) || 0);
+          } else {
+            target.vipLevel = oldLevel;
+            target.vipPoint = oldPoint;
+          }
+          persist(target);
+          Promise.resolve(syncFromCloud()).catch(() => {});
+        }
+      }).catch(() => { /* 网络失败保留本地值，下一次同步以云端为准 */ });
+    }
 
     /* 升级后刷新界面（面板开着时即时看到进度） */
     if (typeof window.VipUI !== 'undefined' && typeof window.VipUI.refreshIfOpen === 'function') {
@@ -177,6 +247,8 @@
       point: u.vipPoint,
       cap: capOf(u.vipLevel, type),
       levelUp: crossed,
+      overflowStar,
+      overflowPoints,
       status: type
     };
   }

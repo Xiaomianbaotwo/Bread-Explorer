@@ -50,11 +50,34 @@
       lv += 1;
       ups.push(lv);
     }
-    /* 【修改】20261119：满级允许烘焙度到上限（480），不再卡在 479 */
-    if (lv >= MAX_LEVEL) bake = Math.min(bake, capOf(MAX_LEVEL));
+    /* 【修改】20261119：满级允许烘焙度到上限（480），不再卡在 479。
+       【新增】20261119：满级后超出上限的烘焙度不再丢弃，按 3 烘焙度 = 1 积分转换。 */
+    let overflowBake = 0;
+    let overflowPoints = 0;
+    if (lv >= MAX_LEVEL) {
+      const maxBake = capOf(MAX_LEVEL);
+      if (bake > maxBake) {
+        overflowBake = bake - maxBake;
+        overflowPoints = Math.floor(overflowBake / 3);
+        bake = maxBake;
+        if (overflowPoints > 0) {
+          u.points = (Number(u.points) || 0) + overflowPoints;
+          if (typeof window.__bbSetAssetsPoints === 'function') {
+            window.__bbSetAssetsPoints(u.points, u.user_id);
+          }
+        }
+      }
+    }
     u.userLevel = lv;
     u.userBake = bake;
-    return { level: lv, bake, cap: capOf(lv), levelUp: ups };
+    return {
+      level: lv,
+      bake,
+      cap: capOf(lv),
+      levelUp: ups,
+      overflowBake,
+      overflowPoints
+    };
   }
 
   function applyRewards(u, ups, skipPoints) {
@@ -101,7 +124,22 @@
       return Promise.resolve(Object.assign({ ok: true, points: u.points }, res, { reward: got }));
     }
 
-    return sb.rpc('user_add_bake', { p_amount: amt, p_source: src, p_cost: cst }).then(res => {
+    /* 【修改】20261119：优先调用 user_add_bake_v2。
+       v2 会在 Lv60 满级后把超出的烘焙度按 3:1 转成积分；
+       如果后端还没执行 20261119-max-level-overflow.sql，就自动回退旧函数。 */
+    const callBakeRpc = async () => {
+      let rpcRes = await sb.rpc('user_add_bake_v2', { p_amount: amt, p_source: src, p_cost: cst });
+      if (rpcRes && rpcRes.error) {
+        const code = rpcRes.error.code || '';
+        const msg = String(rpcRes.error.message || '');
+        if (code === 'PGRST202' || /could not find the function|does not exist/i.test(msg)) {
+          rpcRes = await sb.rpc('user_add_bake', { p_amount: amt, p_source: src, p_cost: cst });
+        }
+      }
+      return rpcRes;
+    };
+
+    return callBakeRpc().then(res => {
       if (res && res.error) throw res.error;
       const d = res && res.data;
       if (!d || !d.ok) {
@@ -114,6 +152,11 @@
 
       u.userLevel = Number(d.level) || (Number(u.userLevel) || 1);
       u.userBake = Number(d.bake) || 0;
+      /* 【新增】20261119 P4：user_level / user_bake 也改由服务端写入，
+         这里同步本地基线，避免后续 store.set 再尝试直写这两列。 */
+      if (typeof window.__bbSetAssetsLevel === 'function') {
+        window.__bbSetAssetsLevel(u.userLevel, u.userBake, u.user_id);
+      }
       /* 【修改】20261118 P3：新版服务端返回权威 points（含兑换扣分 + 升级奖励），
          所有来源都以它为准；旧版 RPC 没有 points 时才由 applyRewards 本地补升级奖励。 */
       const hasServerPoints = (d.points !== undefined && d.points !== null);
@@ -127,7 +170,17 @@
       const got = applyRewards(u, ups, hasServerPoints);
       if (got.points) toastLevelUp(d.level, got.points);
       afterLevelChange(u);
-      return { ok: true, points: u.points, level: d.level, bake: d.bake, cap: d.cap, levelUp: ups, reward: got };
+      return {
+        ok: true,
+        points: u.points,
+        level: d.level,
+        bake: d.bake,
+        cap: d.cap,
+        levelUp: ups,
+        reward: got,
+        overflowBake: Math.max(0, Number(d.overflowBake) || 0),
+        overflowPoints: Math.max(0, Number(d.overflowPoints) || 0)
+      };
     }).catch(err => {
       /* 【修改】20261118 P2：业务拒绝不本地兜底，避免绕过服务端每日限额。 */
       if (err && err.code === 'BUSINESS') {
@@ -192,7 +245,11 @@
         return;
       }
       save(u); refreshPanel();
-      if (typeof showToast === 'function') showToast(T('bread.claimOk', { n: task.bake }), '🍞');
+      if (typeof showToast === 'function') {
+        const overflow = Math.max(0, Number(res.overflowPoints) || 0);
+        showToast(T(overflow > 0 ? 'bread.claimOkOverflow' : 'bread.claimOk',
+          { n: task.bake, points: overflow }), '🍞');
+      }
       /* 【新增】20261119：面包任务完成后顺带发积分（每日 10 / 每周 25），
          由「积分中心」统一入账，任务数值仍可在这里调整 */
       try {
@@ -234,7 +291,11 @@
       }
       save(u);
       renderAll();
-      if (typeof showToast === 'function') showToast(T('bread.checkinOk', { n: bake }), '🍞');
+      if (typeof showToast === 'function') {
+        const overflow = Math.max(0, Number(res.overflowPoints) || 0);
+        showToast(T(overflow > 0 ? 'bread.checkinOkOverflow' : 'bread.checkinOk',
+          { n: bake, points: overflow }), '🍞');
+      }
     });
   }
 
@@ -308,9 +369,14 @@
       renderAll();
       if (typeof showToast === 'function') {
         const ups = (res && res.levelUp) || [];
-        showToast(ups.length
-          ? T('bread.exchangeLevelUp', { bake: pkg.bake, level: res.level })
-          : T('bread.exchangeOk', { bake: pkg.bake }), ups.length ? '🎉' : '🍞');
+        const overflow = Math.max(0, Number(res.overflowPoints) || 0);
+        if (overflow > 0) {
+          showToast(T('bread.exchangeOverflow', { bake: pkg.bake, points: overflow }), '🍞');
+        } else {
+          showToast(ups.length
+            ? T('bread.exchangeLevelUp', { bake: pkg.bake, level: res.level })
+            : T('bread.exchangeOk', { bake: pkg.bake }), ups.length ? '🎉' : '🍞');
+        }
       }
       return { ok: true, bake: pkg.bake };
     });

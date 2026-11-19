@@ -5,19 +5,15 @@
 
 window.isDevMode = false; 
 window.isAutoRainEnabled = false; 
-const DEV_UUID_LIST = [
-  'b53b3bc6-6126-42a5-8f9c-c80f93196d58', // 你自己
-  '好友的uuid放这里'
-];
+const DEV_UUID = 'b53b3bc6-6126-42a5-8f9c-c80f93196d58';
 
 function closeDevPanel() {
   window.isDevMode = false;
-  window.isAutoRainEnabled = false;
+  window.isAutoRainEnabled = false; 
   const btn = $('#btnDevAutoRain');
   if (btn) {
-    btn.style.background = 'transparent';
-    btn.style.color = '#9b59b6';
-    btn.textContent = _load('dev.autoRainBtnOff', '🤖自动领取红包(0.7秒)');
+    btn.style.color = '#9b59b6'; btn.style.background = 'transparent';
+    btn.textContent = _loadT('dev.autoRainBtnOff', '🤖 自动领取红包(0.7秒)');
   }
   $('#devPanel').classList.remove('show');
 }
@@ -26,22 +22,17 @@ document.addEventListener('keydown', async (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
   if (currentUser && e.key.toLowerCase() === 'k') {
     if (window.isDevMode) {
-      window.isDevMode = false;
-      $('#devPanel').classList.remove('show');
+      window.isDevMode = false; $('#devPanel').classList.remove('show');
       return showToast(_loadT('dev.devOff', '开发者模式已关闭'), '🔒');
     }
     try {
-      showToast(_loadT('dev.verifyingIdentity', '正在向云端验证身份…'), '🔍');
+      showToast(_loadT('dev.verifyingIdentity', '正在向云端验证身份...'), '⏳');
       const { data: { user }, error } = await sb.auth.getUser();
-      if (error || !user) return showToast(_loadT('dev.verifyFailNotLogged', '验证失败: 未登录'), '❌');
-      // ✅ 这里改成数组包含判断
-      if (DEV_UUID_LIST.includes(user.id)) {
-        window.isDevMode = true;
-        $('#devPanel').classList.add('show');
+      if (error || !user) return showToast(_loadT('dev.verifyFailNotLogged', '验证失败：未登录'), '❌');
+      if (user.id === DEV_UUID) {
+        window.isDevMode = true; $('#devPanel').classList.add('show');
         showToast(_loadT('dev.verifySuccess', '身份验证通过，欢迎主理人！'), '👑');
-      } else {
-        showToast(_loadT('dev.accessDenied', '拒绝访问: 无管理员权限'), '🚫');
-      }
+      } else { showToast(_loadT('dev.accessDenied', '拒绝访问：无管理员权限'), '🚫'); }
     } catch (err) { showToast(_loadT('dev.requestFail', '请求失败，检查网络'), '❌'); }
   }
 });
@@ -260,6 +251,9 @@ $('#btnDevSetPoints').onclick = () => {
     if (error) return showToast(_loadT('dev.cloudFail', '云端修改失败: ') + error.message, '❌');
 
     u.points = pts;
+    if (typeof window.__bbSetAssetsPoints === 'function') {
+      window.__bbSetAssetsPoints(pts, u.user_id);
+    }
     store.set('bb-users', users); 
     loadUserData();
     showToast(_loadT('dev.pointsSet', { pts }), '🪙');
@@ -304,8 +298,10 @@ $('#btnDevSetStar').onclick = () => {
       const oldLvStar = Number(rec.u.vipLevel) || 1;
       rec.u.vipPoint = n;
       /* 【修正】20261118：原来直接 normalize，跨过奖励等级也不会发邮件。
-         改成和正常攒星光同一条路：normalize 拿到跨级列表后交给 VipReward 发信。 */
-      const crossedStar = window.VIPCore.normalize(rec.u, type);
+         改成和正常攒星光同一条路：normalize 拿到跨级列表后交给 VipReward 发信。
+         【修改】20261119：normalize 现在返回 { crossed, overflowPoint }，取 crossed。 */
+      const normStar = window.VIPCore.normalize(rec.u, type);
+      const crossedStar = normStar && normStar.crossed ? normStar.crossed : [];
       const mailLenBefore = (rec.u.emails || []).length;
       if (Array.isArray(crossedStar) && crossedStar.length
           && typeof window.VipReward !== 'undefined'
@@ -313,6 +309,30 @@ $('#btnDevSetStar').onclick = () => {
         try { window.VipReward.onLevelCrossed(rec.u, crossedStar, type); } catch (e) { console.warn('[dev] 发信失败', e); }
       }
       window.VIPCore.persist(rec.u);
+      /* 【新增】20261119 P4：星光/等级列已禁止客户端直写，
+         开发者“设置星光值”必须在服务端落库，否则刷新就回退。 */
+      if (typeof sb !== 'undefined' && sb.rpc && rec.u.user_id) {
+        sb.rpc('dev_set_star', {
+          p_level: Number(rec.u.vipLevel) || 1,
+          p_point: Number(rec.u.vipPoint) || 0,
+          p_admin_id: DEV_UUID
+        }).then(({ data, error }) => {
+          if (error) {
+            const code = error.code || '';
+            if (code !== 'PGRST202' && !/could not find the function|does not exist/i.test(error.message || '')) {
+              showToast(_loadT('dev.cloudFail', '云端修改失败: ') + error.message, '❌');
+            }
+            return;
+          }
+          if (data && data.ok) {
+            rec.u.vipLevel = Number(data.level) || rec.u.vipLevel;
+            rec.u.vipPoint = Number(data.point) || 0;
+            if (typeof window.__bbSetAssetsVip === 'function') {
+              window.__bbSetAssetsVip(rec.u.vipLevel, rec.u.vipPoint, rec.u.user_id);
+            }
+          }
+        });
+      }
       devVipRefreshAfterChange();
       if (typeof window.renderMails === 'function') { try { window.renderMails(); } catch (e) { /* 忽略 */ } }
       const s = window.VIPCore.snapshot(rec.u);
@@ -368,6 +388,30 @@ $('#btnDevSetLevel').onclick = () => {
       rec.u.vipPoint = 0;
       rec.u.vipAppliedType = window.VIPCore.memberTypeOf(rec.u);
       window.VIPCore.persist(rec.u);
+      /* 【新增】20261119 P4：等级/星光列已禁止客户端直写，
+         开发者“设置等级”也要走 dev_set_star 才不会被刷新回退。 */
+      if (typeof sb !== 'undefined' && sb.rpc && rec.u.user_id) {
+        sb.rpc('dev_set_star', {
+          p_level: lv,
+          p_point: 0,
+          p_admin_id: DEV_UUID
+        }).then(({ data, error }) => {
+          if (error) {
+            const code = error.code || '';
+            if (code !== 'PGRST202' && !/could not find the function|does not exist/i.test(error.message || '')) {
+              showToast(_loadT('dev.cloudFail', '云端修改失败: ') + error.message, '❌');
+            }
+            return;
+          }
+          if (data && data.ok) {
+            rec.u.vipLevel = Number(data.level) || lv;
+            rec.u.vipPoint = Number(data.point) || 0;
+            if (typeof window.__bbSetAssetsVip === 'function') {
+              window.__bbSetAssetsVip(rec.u.vipLevel, rec.u.vipPoint, rec.u.user_id);
+            }
+          }
+        });
+      }
       /* 【修改】20261117：开发者一旦把等级调高（哪怕只调 1 级），就把当前等级以下所有配置等级的礼包
          强制重发一遍。原来按「跨过的等级」计算，遇到等级原本就越界（例如 180）或旧值不准时会算空，
          结果一封都不发——这就是「升上去了却没收到邮件」的原因。 */
@@ -492,6 +536,9 @@ function setDevVip(level) {
       if (error) return showToast(_loadT('dev.cloudFail', '云端修改失败: ') + error.message, '❌');
 
       u.vipType = 'none'; u.vipExpire = 0;
+      if (typeof window.__bbSetAssetsVipStatus === 'function') {
+        window.__bbSetAssetsVipStatus('none', 0, u.user_id);
+      }
       store.set('bb-users', users); 
       loadUserData();
       showToast(_loadT('dev.setNoneOk', '已设为普通用户并同步云端'), '🔧');
@@ -514,6 +561,9 @@ function setDevVip(level) {
 
     u.vipType = level === 2 ? 'svip' : 'vip';
     u.vipExpire = expireTime;
+    if (typeof window.__bbSetAssetsVipStatus === 'function') {
+      window.__bbSetAssetsVipStatus(u.vipType, u.vipExpire, u.user_id);
+    }
     store.set('bb-users', users); 
     loadUserData();
     showToast(_loadT('dev.setVipOk', { level: level === 1 ? 'VIP' : 'SVIP' }), '🔧');
@@ -534,6 +584,9 @@ $('#btnDevSetForever').onclick = () => {
   }).then(({ error }) => {
     if (error) return showToast(_loadT('dev.cloudFail', '云端修改失败: ') + error.message, '❌');
     u.vipType = 'svip'; u.vipExpire = 0;
+    if (typeof window.__bbSetAssetsVipStatus === 'function') {
+      window.__bbSetAssetsVipStatus('svip', 0, u.user_id);
+    }
     store.set('bb-users', users); 
     loadUserData();
     showToast(_loadT('dev.foreverOk', '已设为永久 SVIP 并同步云端'), '🔧');

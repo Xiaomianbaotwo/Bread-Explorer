@@ -580,7 +580,7 @@ function openThemeCenter() {
     try {
       const saved = store.get('bb-emoji-freq', null);
       if (saved && saved.user === currentUser && Number.isFinite(Number(saved.freq))) {
-        freq = Math.min(2, Math.max(0.5, Number(saved.freq)));
+        freq = Math.min(25, Math.max(0.5, Number(saved.freq)));
       }
       if (typeof window.currentEmojiFrequency === 'function') {
         freq = window.currentEmojiFrequency();
@@ -613,6 +613,28 @@ function openThemeCenter() {
   if (window.WinterFX && typeof window.WinterFX.sync === 'function') {
     try { window.WinterFX.sync(); } catch (err) { console.warn('[冬日雪境] 同步失败', err); }
   }
+
+  /* 【新增】20261119：雨效设置回填（绿野仙踪 / 春日花信 / 盛夏海岸 / 秋日私语） */
+  const themeMeta = (typeof THEMES !== 'undefined' && THEMES) ? THEMES[currentTheme] : null;
+  /* 【修改】20261119：雨效只对 Plus / Max / Ultimate 开放，基础版不显示设置、不触发。 */
+  const isRainTier = /-(plus|max|ultimate)$/.test(currentTheme || '');
+  const isRainFx = isRainTier && (/^forest(-|$)/.test(currentTheme || '')
+    || !!(themeMeta && (themeMeta.season === 'spring' || themeMeta.season === 'summer' || themeMeta.season === 'autumn')));
+  const rainArea = $('#rainConfigArea');
+  if (rainArea) rainArea.style.display = isRainFx ? 'block' : 'none';
+  /* 【新增】20261119：网页声音总开关在所有主题下都回填；旧账号默认开启。 */
+  if ($('#rainSound')) $('#rainSound').checked = u.rainSound === undefined ? true : !!u.rainSound;
+  if (isRainFx) {
+    if ($('#rainSpeed')) $('#rainSpeed').value = Number(u.rainSpeed || 1).toFixed(1);
+    if ($('#rainWind')) $('#rainWind').value = Number(u.rainWind === undefined ? 0.5 : u.rainWind).toFixed(1);
+    if ($('#rainDir')) $('#rainDir').value = u.rainDir === 'left' ? 'left' : 'right';
+    if ($('#rainDensity')) $('#rainDensity').value = Number(u.rainDensity || 1).toFixed(1);
+    if ($('#rainForce')) $('#rainForce').checked = !!u.rainForce;
+  }
+  /* 【新增】20261119：主题中心打开时同步雨效，主题未切换也不会残留旧雨层 */
+  if (window.RainFX && typeof window.RainFX.sync === 'function') {
+    try { window.RainFX.sync(); } catch (err) { console.warn('[雨效] 同步失败', err); }
+  }
 }
 
 /* 【修正】20261119：事件委托绑定，元素被重渲染也不会丢监听；双击防抖 */
@@ -631,11 +653,12 @@ document.addEventListener('change', (e) => {
     let u = users[currentUser];
     let val = parseFloat(e.target.value);
     if (isNaN(val)) val = 1.0;
-    val = Math.max(0.1, Math.min(5.0, val));
+    val = Math.max(0.1, Math.min(25.0, val));
     e.target.value = val.toFixed(1);
     if (e.target.id === 'fwSpeedInput') u.fwSpeed = val;
     else u.fwFreq = val;
-    store.set('bb-users', users);
+    /* 【修改】20261119：只写 preferences.settings，不整行写 assets */
+    store.set('bb-users', users, { prefsOnly: true });
     showToast(_loadT('auth.fwUpdated'), '⚙️');
   }
 
@@ -643,7 +666,7 @@ document.addEventListener('change', (e) => {
     let users = getUsersDB();
     let u = users[currentUser];
     u.fwThemeColor = e.target.checked;
-    store.set('bb-users', users);
+    store.set('bb-users', users, { prefsOnly: true });
     showToast(e.target.checked ? _loadT('auth.fwColorOn') : _loadT('auth.fwColorOff'), '🎨');
   }
 
@@ -652,7 +675,7 @@ document.addEventListener('change', (e) => {
     let users = getUsersDB();
     let u = users[currentUser];
     u.fwTimeMode = e.target.value === 'day' || e.target.value === 'night' ? e.target.value : 'both';
-    store.set('bb-users', users);
+    store.set('bb-users', users, { prefsOnly: true });
     showToast(_loadT('auth.fwTimeUpdated'), '🕒');
   }
 
@@ -660,28 +683,45 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'emojiDirSelect') {
     if (!currentUser) return;
     const dir = e.target.value || 'up';
-    /* 【修改】20261119：切换方向完全不碰 bb-users / getUsersDB / 云端同步，
-       只记录一个极小的本地值，避免任何大对象读写把主线程卡住。 */
+    /* 【修改】20261119：切换方向仍只做轻量本地值，但额外把方向写进 preferences.settings，
+       换设备后能恢复；prefsOnly 不会碰 bread_assets，避免整行资产写入。 */
     window.__emojiDir = { user: currentUser, dir };
     try {
       localStorage.setItem('bb-emoji-dir', JSON.stringify({ user: currentUser, dir }));
     } catch (err) { console.warn('[emojiDir] 本地保存失败', err); }
+    try {
+      const users = getUsersDB();
+      const u = users[currentUser];
+      if (u && u.user_id) {
+        u.emojiDir = dir;
+        store.set('bb-users', users, { prefsOnly: true });
+      }
+    } catch (err) { console.warn('[emojiDir] 云端保存失败', err); }
     if (typeof refreshEmojiBackground === 'function') refreshEmojiBackground(true);
     showToast(_loadT('auth.emojiDirUpdated') || '🌀', '🌀');
   }
 
   /* 【新增】20261119：背景 emoji 出现频率。
-     只写本地小键并重建背景，不读写 bb-users，也不触发云端同步。 */
+     本地立即生效，再把频率轻量写进 preferences.settings。 */
   if (e.target.id === 'emojiFreqInput') {
     if (!currentUser) return;
     let freq = parseFloat(e.target.value);
     if (!Number.isFinite(freq)) freq = 1;
-    freq = Math.min(2, Math.max(0.5, freq));
+    freq = Math.min(25, Math.max(0.5, freq));
     e.target.value = freq.toFixed(1);
     window.__emojiFreq = { user: currentUser, freq };
     try {
       localStorage.setItem('bb-emoji-freq', JSON.stringify({ user: currentUser, freq }));
     } catch (err) { console.warn('[emojiFreq] 本地保存失败', err); }
+    /* 【新增】20261119：出现频率也写进 preferences.settings，换设备保留 */
+    try {
+      const users = getUsersDB();
+      const u = users[currentUser];
+      if (u && u.user_id) {
+        u.emojiFreq = freq;
+        store.set('bb-users', users, { prefsOnly: true });
+      }
+    } catch (err) { console.warn('[emojiFreq] 云端保存失败', err); }
     if (typeof refreshEmojiBackground === 'function') refreshEmojiBackground();
     showToast(_loadT('auth.emojiFreqUpdated') || '✨', '✨');
   }

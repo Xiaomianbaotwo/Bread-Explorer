@@ -403,6 +403,36 @@ async function startCloudSync() {
         userBake: Math.max(0, Number(a.user_bake) || 0)
       };
 
+      /* 【新增】20261119：把主题中心其余参数也装进本地用户对象。
+         以前只装了 fwSpeed / fwFreq / fwThemeColor，导致首次加载后
+         fwTimeMode、Emoji、问候语跟随、冬日雪效、布局在本地缺失，
+         后续任意 store.set 都可能拿默认值把云端设置覆盖掉。 */
+      const cloudUiSettings = {
+        fwTimeMode: set.fwTimeMode,
+        emojiDir: set.emojiDir,
+        emojiFreq: set.emojiFreq,
+        homeTextFollowTheme: set.homeTextFollowTheme,
+        winterSnowSpeed: set.winterSnowSpeed,
+        winterSnowWind: set.winterSnowWind,
+        winterSnowDir: set.winterSnowDir,
+        winterSnowDensity: set.winterSnowDensity,
+        winterSnowForce: set.winterSnowForce,
+        /* 【新增】20261119：雨效设置也从 preferences.settings 装回本地。 */
+        rainSpeed: set.rainSpeed,
+        rainWind: set.rainWind,
+        rainDir: set.rainDir,
+        rainDensity: set.rainDensity,
+        rainForce: set.rainForce,
+        /* 【新增】20261119：网页声音开关随云端设置一起装回。 */
+        rainSound: set.rainSound,
+        layout: set.layout,
+        layoutWidgets: set.layoutWidgets,
+        layoutUniformScale: set.layoutUniformScale
+      };
+      Object.keys(cloudUiSettings).forEach(key => {
+        if (cloudUiSettings[key] !== undefined) assembledUser[key] = cloudUiSettings[key];
+      });
+
       let localUsers = store.get('bb-users', {});
       localUsers[curUser] = { ...localUsers[curUser], ...assembledUser };
       localStorage.setItem('bb-users', JSON.stringify(localUsers));

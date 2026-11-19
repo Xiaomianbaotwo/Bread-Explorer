@@ -36,6 +36,9 @@
           articleDesc: "沉浸式花事阅读 · 古文专栏",
           /* 【新增】20261119：花事书房门禁提示（VIP/SVIP 直接进，普通用户需面包等级） */
           needBreadLevel: "需要面包等级 Lv{{level}} 或 VIP / SVIP 才能进入",
+          /* 【新增】20261119：面包 AI 子站入口 */
+          aiName: "面包 AI",
+          aiDesc: "多模型统一入口 · 基础框架预览",
   };
 
   window.__BB_I18N.zh['userCenter'] = {
@@ -234,6 +237,9 @@
           articleDesc: "Immersive flower-themed reading · Classical prose column",
           /* 【新增】20261119：花事书房门禁提示 */
           needBreadLevel: "Requires bread level Lv{{level}} or VIP / SVIP",
+          /* 【新增】20261119：面包 AI 子站入口 */
+          aiName: "Bread AI",
+          aiDesc: "Multi-model entry · framework preview",
   };
 
   window.__BB_I18N.en['userCenter'] = {

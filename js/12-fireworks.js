@@ -1349,6 +1349,8 @@ class Firework {
     
     let currentUsersDB = getUsersDB();
     let speedMult = (currentUser && currentUsersDB[currentUser] && currentUsersDB[currentUser].fwSpeed) ? currentUsersDB[currentUser].fwSpeed : 1.0;
+    /* 【修改】20261119：速度上限放宽到 25，但用幂函数压缩，避免烟花一帧飞到屏幕外。 */
+    speedMult = Math.pow(Math.max(0.1, Number(speedMult) || 1), 0.6);
     
     let baseSpeed = (3 + Math.random() * 2) * speedMult; 
     this.speed = isBg ? baseSpeed * 0.7 : baseSpeed;
@@ -2107,6 +2109,9 @@ setInterval(() => {
     else if (hasSpecialTheme) baseFreq = 2;
 
     let finalFreq = Math.max(1, Math.floor(baseFreq * freqMult));
+    /* 【新增】20261119：频率上限放宽到 25，但单轮最多 24 发，
+       避免用户拉到 25 时瞬间生成上百个 Firework 导致掉帧。 */
+    finalFreq = Math.min(24, finalFreq);
 
     for(let i=0; i<finalFreq; i++) {
       setTimeout(() => { 

@@ -41,7 +41,7 @@
       try {
         const users = getUsersDB();
         users[currentUser] = u;
-        store.set('bb-users', users);
+        store.set('bb-users', users, { skipCloud: true });
       } catch (e) { /* 本地存储失败不阻断雪效 */ }
     }
   }
@@ -51,9 +51,9 @@
       const n = Number(v);
       return isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback;
     };
-    settings.speed = clamp(u.winterSnowSpeed, 0.2, 2.5, DEFAULT.speed);
-    settings.wind = clamp(u.winterSnowWind, 0, 2, DEFAULT.wind);
-    settings.density = clamp(u.winterSnowDensity, 0.2, 2.5, DEFAULT.density);
+    settings.speed = clamp(u.winterSnowSpeed, 0.2, 25, DEFAULT.speed);
+    settings.wind = clamp(u.winterSnowWind, 0, 25, DEFAULT.wind);
+    settings.density = clamp(u.winterSnowDensity, 0.2, 25, DEFAULT.density);
     settings.dir = u.winterSnowDir === 'left' ? 'left' : 'right';
     settings.force = !!u.winterSnowForce;
   }
@@ -102,7 +102,9 @@
   function seed() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    const count = Math.max(20, Math.min(360, Math.round(130 * settings.density)));
+    /* 【修改】20261119：密度上限放宽到 25，但用平方根压缩并设 700 粒上限，避免卡顿。 */
+    const densityScale = Math.pow(settings.density, 0.5);
+    const count = Math.max(20, Math.min(700, Math.round(130 * densityScale)));
     flakes = [];
     for (let i = 0; i < count; i++) flakes.push(makeFlake(w, h, false));
   }
@@ -115,11 +117,14 @@
     const h = window.innerHeight;
     ctx.clearRect(0, 0, w, h);
     const dirSign = settings.dir === 'left' ? -1 : 1;
+    /* 【修改】20261119：速度 / 风力上限放宽到 25，但用幂函数压缩，避免雪花瞬移。 */
+    const speedScale = Math.pow(settings.speed, 0.4);
+    const windPx = Math.min(900, 42 * Math.pow(settings.wind, 0.8));
 
     for (const f of flakes) {
       f.phase += dt * 0.9;
-      f.y += f.vy * settings.speed * dt;
-      f.x += (dirSign * settings.wind * 42 * settings.speed + Math.sin(f.phase) * f.sway * 9) * dt;
+      f.y += f.vy * speedScale * dt;
+      f.x += (dirSign * windPx + Math.sin(f.phase) * f.sway * 9) * speedScale * dt;
 
       if (f.y > h + 12 || f.x < -24 || f.x > w + 24) {
         const nf = makeFlake(w, h, true);
@@ -144,7 +149,8 @@
   function start() {
     ensureCanvas();
     if (running) {
-      const target = Math.max(20, Math.min(360, Math.round(130 * settings.density)));
+      const densityScale = Math.pow(settings.density, 0.5);
+      const target = Math.max(20, Math.min(700, Math.round(130 * densityScale)));
       if (flakes.length !== target) seed();
       return;
     }
@@ -200,12 +206,13 @@
     const users = getUsersDB();
     const u = users[currentUser];
     if (!u) return;
-    if (id === 'winterSnowSpeed') u.winterSnowSpeed = Math.max(0.2, Math.min(2.5, Number(e.target.value) || 1));
-    if (id === 'winterSnowWind') u.winterSnowWind = Math.max(0, Math.min(2, Number(e.target.value) || 0.5));
+    if (id === 'winterSnowSpeed') u.winterSnowSpeed = Math.max(0.2, Math.min(25, Number(e.target.value) || 1));
+    if (id === 'winterSnowWind') u.winterSnowWind = Math.max(0, Math.min(25, Number(e.target.value) || 0.5));
     if (id === 'winterSnowDir') u.winterSnowDir = e.target.value === 'left' ? 'left' : 'right';
-    if (id === 'winterSnowDensity') u.winterSnowDensity = Math.max(0.2, Math.min(2.5, Number(e.target.value) || 1));
+    if (id === 'winterSnowDensity') u.winterSnowDensity = Math.max(0.2, Math.min(25, Number(e.target.value) || 1));
     if (id === 'winterSnowForce') u.winterSnowForce = !!e.target.checked;
-    store.set('bb-users', users);
+    /* 【修改】20261119：雪效参数只写 preferences.settings，避免整行资产写入 */
+    store.set('bb-users', users, { prefsOnly: true });
     sync();
   });
 

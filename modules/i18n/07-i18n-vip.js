@@ -19,7 +19,7 @@
     pointOf: "星光值 {{point}} / {{cap}}",
     maxPoint: "星光值 {{point}}（已满级）",
     tipToNext: "距离 Lv.{{next}} 还差 {{n}} 星光值",
-    tipMax: "已达最高等级 Lv.100，继续累积星光值不再提升等级",
+    tipMax: "已达最高等级 Lv.100；多余星光值按 1:3 自动转积分",
 
     checkinBtn: "📅 签到领取 {{n}} 星光值",
     checkinDone: "📅 今日已签到（+{{n}} 星光值）",
@@ -38,6 +38,7 @@
     claimedTxt: "已领取",
     ongoing: "进行中",
     claimSuccess: "领取成功，获得 {{n}} 星光值",
+    claimSuccessOverflow: "领取成功，获得 {{n}} 星光值；已满级，溢出部分自动转为 {{points}} 积分",
     claimedToast: "该任务本周期已经领取过了",
     actionFailed: "操作失败，请稍后重试",
     notMemberTip: "您不是VIP，请开通VIP后再尝试此功能",
@@ -124,7 +125,7 @@
     pointOf: "Starlight {{point}} / {{cap}}",
     maxPoint: "Starlight {{point}} (max level)",
     tipToNext: "{{n}} Starlight to Lv.{{next}}",
-    tipMax: "Max level Lv.100 reached; Starlight no longer raises the level",
+    tipMax: "Max level Lv.100 reached; excess Starlight auto-converts to points (1:3)",
 
     checkinBtn: "📅 Check in for {{n}} Starlight",
     checkinDone: "📅 Checked in today (+{{n}} Starlight)",
@@ -143,6 +144,7 @@
     claimedTxt: "Claimed",
     ongoing: "In progress",
     claimSuccess: "Claimed, +{{n}} Starlight",
+    claimSuccessOverflow: "Claimed, +{{n}} Starlight; max level, overflow converted to {{points}} points",
     claimedToast: "This task is already claimed for this period",
     actionFailed: "Action failed, please try again later",
     notMemberTip: "You are not a VIP. Please subscribe to VIP before using this feature",

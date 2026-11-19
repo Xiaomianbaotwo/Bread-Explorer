@@ -88,6 +88,15 @@ body::before {
   pointer-events: none;
 }
 
+/* 【新增】20261119：绿野仙踪 / 春日花信 / 盛夏海岸 / 秋日私语雨层，
+   和雪层同层级；主题互斥，不会同时出现。 */
+#rainLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .crumb {
   position: fixed; width: 7px; height: 7px; border-radius: 50%;
   background: #c88a3d; z-index: 99; pointer-events: none;

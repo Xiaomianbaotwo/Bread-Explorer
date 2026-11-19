@@ -15,6 +15,8 @@
   const STORAGE_KEY = 'bb-layout-edit-v1';
   const WIDGET_KEY = 'bb-layout-widgets-v1';
   const UNIFORM_KEY = 'bb-layout-uniform-scale-v1';
+  /* 【新增】20261119：布局专用云表；表名尽量短，每用户一行。 */
+  const LAYOUT_TABLE = 'layouts';
   const SNAP = 8;                 // 拖动吸附网格，避免对不齐
   const DRAG_THRESHOLD = 4;
 
@@ -52,6 +54,9 @@
   let uniformScale = false;
   try { uniformScale = localStorage.getItem(UNIFORM_KEY) === '1'; } catch (e) { /* 忽略 */ }
   const widgetEls = new Map();     // id -> { el, timer, tick, stop }
+  /* 【新增】20261119：布局云端同步状态 */
+  let applyingCloudLayout = false;
+  let layoutCloudTimer = null;
 
   /* 【新增】20261119：页面切回前台 / 窗口重新聚焦时，全部石英钟立刻按电脑时间走一格。 */
   function syncQuartzClocks() {
@@ -96,10 +101,124 @@ window.addEventListener('pageshow', syncQuartzClocks);
 
   function persistSaved() {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch (e) { /* 忽略 */ }
+    scheduleCloudLayoutSave();
   }
 
   function persistWidgets() {
     try { localStorage.setItem(WIDGET_KEY, JSON.stringify(widgetDefs)); } catch (e) { /* 忽略 */ }
+    scheduleCloudLayoutSave();
+  }
+
+  /* 【新增】20261119：布局改动后延迟合并写入 bread_preferences.settings。
+     拖动过程中不写，松手 / 缩放结束 / 删除 / 重置后再写，避免频繁请求。 */
+  function scheduleCloudLayoutSave() {
+    if (applyingCloudLayout || !currentUser) return;
+    if (layoutCloudTimer) clearTimeout(layoutCloudTimer);
+    layoutCloudTimer = setTimeout(saveLayoutToCloud, 450);
+  }
+
+  /* 【新增】20261119：布局专用云表读写。
+     - 写：拖拽/缩放/组件增删/等比例开关后，和 bread_preferences.settings 双写；
+     - 读：登录并拉到偏好后优先读 layouts 表，旧 settings 只作为后备。 */
+  function stableLayoutJson(value) {
+    if (Array.isArray(value)) return '[' + value.map(stableLayoutJson).join(',') + ']';
+    if (value && typeof value === 'object') {
+      return '{' + Object.keys(value).sort().map(k => JSON.stringify(k) + ':' + stableLayoutJson(value[k])).join(',') + '}';
+    }
+    return JSON.stringify(value);
+  }
+
+  function getLayoutUser() {
+    try {
+      if (!currentUser) return null;
+      const users = getUsersDB();
+      return users[currentUser] || null;
+    } catch (e) { return null; }
+  }
+
+  function saveLayoutTable() {
+    if (window.isLocalMode || typeof sb === 'undefined' || !sb || typeof sb.from !== 'function') return Promise.resolve();
+    const u = getLayoutUser();
+    if (!u || !u.user_id) return Promise.resolve();
+    const row = {
+      user_id: u.user_id,
+      layout: saved,
+      widgets: widgetDefs,
+      uniform_scale: uniformScale,
+      updated_at: new Date().toISOString()
+    };
+    return sb.from(LAYOUT_TABLE).upsert(row, { onConflict: 'user_id' }).then(({ error }) => {
+      if (error) throw error;
+    }).catch(err => {
+      /* 表还没建时不弹同步弹窗，避免影响页面其它设置保存；SQL 执行后自动恢复。 */
+      console.warn('[layout] layouts 表保存失败，已保留本地与 preferences 备份', err && (err.message || err.code) ? (err.message || err.code) : err);
+    });
+  }
+
+  function loadLayoutTable() {
+    if (window.isLocalMode || typeof sb === 'undefined' || !sb || typeof sb.from !== 'function') return Promise.resolve(false);
+    const u = getLayoutUser();
+    if (!u || !u.user_id) return Promise.resolve(false);
+    return sb.from(LAYOUT_TABLE)
+      .select('layout,widgets,uniform_scale')
+      .eq('user_id', u.user_id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn('[layout] layouts 表读取失败，继续使用 preferences 备份', error.message || error.code || error);
+          return false;
+        }
+        if (!data) return false;
+        const cloud = {
+          layout: (data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout)) ? data.layout : {},
+          widgets: Array.isArray(data.widgets) ? data.widgets : [],
+          uniformScale: !!data.uniform_scale
+        };
+        const local = { layout: saved, widgets: widgetDefs, uniformScale };
+        /* 表里的布局和本地一致就不重建组件，避免积分/资产同步时反复清空。 */
+        if (stableLayoutJson(local) !== stableLayoutJson(cloud)) {
+          applyCloudLayout(cloud);
+        }
+        /* 同步到 bb-users 内存/本地缓存，下一次 prefsOnly 写回时不会丢。 */
+        try {
+          u.layout = cloud.layout;
+          u.layoutWidgets = cloud.widgets;
+          u.layoutUniformScale = cloud.uniformScale;
+          const users = getUsersDB();
+          users[currentUser] = u;
+          store.set('bb-users', users, { skipCloud: true });
+        } catch (e) { /* 本地缓存失败不影响本次布局应用 */ }
+        return true;
+      })
+      .catch(err => {
+        console.warn('[layout] layouts 表读取异常，继续使用 preferences 备份', err && err.message ? err.message : err);
+        return false;
+      });
+  }
+
+  function saveLayoutToCloud() {
+    layoutCloudTimer = null;
+    if (applyingCloudLayout || !currentUser) return;
+    try {
+      const users = getUsersDB();
+      const u = users && users[currentUser];
+      if (!u || !u.user_id) return;
+      /* 【新增】20261119：等云端偏好基线建立后再写，避免页面刚加载、
+         还没拉到云端布局时先拿本地旧布局覆盖云端。 */
+      if (typeof window.__bbHasPrefsBase === 'function' && !window.__bbHasPrefsBase(u.user_id)) return;
+      u.layout = saved;
+      u.layoutWidgets = widgetDefs;
+      u.layoutUniformScale = uniformScale;
+      /* 只写 preferences.settings，不碰 assets / users，避免影响积分和会员资产 */
+      const p = store.set('bb-users', users, { prefsOnly: true });
+      if (p && typeof p.catch === 'function') {
+        p.catch(err => console.warn('[layout] 云端保存失败，已保留本地布局', err && err.message ? err.message : err));
+      }
+      /* 【新增】20261119：同时写专用 layouts 表，双保险。 */
+      saveLayoutTable();
+    } catch (err) {
+      console.warn('[layout] 云端保存异常，已保留本地布局', err);
+    }
   }
 
   function patchSaved(key, patch) {
@@ -150,6 +269,77 @@ window.addEventListener('pageshow', syncQuartzClocks);
       el.style.zIndex = String(pos.z);
     }
   }
+
+  /* 【新增】20261119：把元素恢复到注册时的原始内联样式，
+     用于云端布局覆盖本地旧布局前先清场，避免旧位置残留。 */
+  function restoreOriginalStyles(el) {
+    const restore = (prop, value) => {
+      if (value) el.style[prop] = value;
+      else el.style.removeProperty(prop.replace(/[A-Z]/g, m => '-' + m.toLowerCase()));
+    };
+    restore('position', el.dataset.layoutOrigPosition || '');
+    restore('left', el.dataset.layoutOrigLeft || '');
+    restore('top', el.dataset.layoutOrigTop || '');
+    restore('transform', el.dataset.layoutOrigTransform || '');
+    restore('scale', el.dataset.layoutOrigScale || '');
+    restore('zIndex', el.dataset.layoutOrigZ || '');
+    restore('display', el.dataset.layoutOrigDisplay || '');
+    delete el.dataset.layoutAbsolute;
+  }
+
+  function applyAllSavedStyles() {
+    document.querySelectorAll('.layout-draggable').forEach(el => {
+      restoreOriginalStyles(el);
+      applySaved(el, el.id);
+    });
+  }
+
+  function clearAllWidgets() {
+    widgetEls.forEach(item => {
+      stopWidgetTimer(item);
+      if (item && item.el) item.el.remove();
+    });
+    widgetEls.clear();
+    const layer = document.getElementById('layoutCustomLayer');
+    if (layer) layer.innerHTML = '';
+  }
+
+  /* 【新增】20261119：云端设置回填后覆盖本地布局。
+     由 11-init.js 在 prefs.settings 拉取完成后调用。 */
+  function applyCloudLayout(data) {
+    if (!data || typeof data !== 'object') return;
+    applyingCloudLayout = true;
+    try {
+      if (data.layout && typeof data.layout === 'object' && !Array.isArray(data.layout)) {
+        saved = data.layout;
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(saved)); } catch (e) { /* 忽略 */ }
+      }
+      if (Array.isArray(data.widgets)) {
+        widgetDefs = data.widgets;
+        try { localStorage.setItem(WIDGET_KEY, JSON.stringify(widgetDefs)); } catch (e) { /* 忽略 */ }
+      }
+      if (typeof data.uniformScale === 'boolean') {
+        uniformScale = data.uniformScale;
+        try { localStorage.setItem(UNIFORM_KEY, uniformScale ? '1' : '0'); } catch (e) { /* 忽略 */ }
+      }
+      /* 先清掉本地旧组件，再按云端定义重建，避免重复挂载 */
+      clearSelection();
+      clearAllWidgets();
+      renderWidgets();
+      applyAllSavedStyles();
+      updateUniformSwitch();
+    } finally {
+      applyingCloudLayout = false;
+    }
+  }
+
+  window.LayoutEdit = {
+    applyCloudSettings: applyCloudLayout,
+    getCloudSettings: () => ({ layout: saved, widgets: widgetDefs, uniformScale }),
+    saveToCloud: saveLayoutToCloud,
+    /* 【新增】20261119：登录并回填完 preferences 后，优先读 layouts 表。 */
+    loadFromTable: loadLayoutTable
+  };
 
   function register(el) {
     if (!el || !el.id) return;
@@ -548,6 +738,8 @@ window.addEventListener('pageshow', syncQuartzClocks);
 
     widgetDefs = [];
     try { localStorage.removeItem(WIDGET_KEY); } catch (e) { /* 忽略 */ }
+    /* 【新增】20261119：重置也要把空布局同步到云端，否则换设备会恢复旧布局 */
+    scheduleCloudLayoutSave();
 
     widgetEls.forEach(item => {
       stopWidgetTimer(item);
@@ -610,6 +802,8 @@ window.addEventListener('pageshow', syncQuartzClocks);
     uniformScale = !uniformScale;
     try { localStorage.setItem(UNIFORM_KEY, uniformScale ? '1' : '0'); } catch (e) { /* 忽略 */ }
     updateUniformSwitch();
+    /* 【新增】20261119：等比例缩放开关也同步到云端 */
+    scheduleCloudLayoutSave();
     showToast(
       uniformScale
         ? T('layout.uniformOn', '等比例缩放已开启')

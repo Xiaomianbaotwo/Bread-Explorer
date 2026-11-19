@@ -253,7 +253,11 @@
     if (typeof window.VipUI !== 'undefined' && typeof window.VipUI.refreshIfOpen === 'function') {
       try { window.VipUI.refreshIfOpen(); } catch (e) { /* 忽略 */ }
     }
-    return { ok: true, reward: p.reward };
+    return {
+      ok: true,
+      reward: p.reward,
+      overflowPoints: Math.max(0, Number(res.overflowPoints) || 0)
+    };
   }
 
   /* ---------- 独立签到 ---------- */

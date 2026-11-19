@@ -20,8 +20,9 @@
     checkinBtn: "每日签到 +{{n}} 烘焙度",
     checkinDone: "今日已签到 +{{n}} 烘焙度",
     checkinOk: "签到成功，+{{n}} 烘焙度",
+    checkinOkOverflow: "签到成功，+{{n}} 烘焙度；已满级，溢出部分自动转为 {{points}} 积分",
     nextNeed: "再攒 {{n}} 烘焙度升级",
-    maxed: "已满级 Lv60",
+    maxed: "已满级 Lv60 · 多余烘焙度自动转积分（3:1）",
 
     taskDay: "今日任务",
     taskWeek: "本周任务",
@@ -42,8 +43,10 @@
     exchangeFail: "兑换失败，请稍后再试",
     exchangeOk: "兑换成功，+{{bake}} 烘焙度",
     exchangeLevelUp: "兑换成功，+{{bake}} 烘焙度，等级升到 Lv{{level}}",
+    exchangeOverflow: "兑换成功，+{{bake}} 烘焙度；已满级，溢出部分自动转为 {{points}} 积分",
     taskReach: "完成 {{n}} 次，可得 {{bake}} 烘焙度",
     claimOk: "任务完成，+{{n}} 烘焙度",
+    claimOkOverflow: "任务完成，+{{n}} 烘焙度；已满级，溢出部分自动转为 {{points}} 积分",
     claimFail: "领取失败：{{reason}}，今日烘焙度额度可能已用完",
     taskPoints: "顺带 +{{n}} 积分（当前 {{total}}）",   /* 【新增】20261119：面包任务顺带发积分 */
 
@@ -95,8 +98,9 @@
     checkinBtn: "Daily check-in +{{n}} bake",
     checkinDone: "Checked in today +{{n}} bake",
     checkinOk: "Check-in done, +{{n}} bake",
+    checkinOkOverflow: "Check-in done, +{{n}} bake; max level, overflow converted to {{points}} points",
     nextNeed: "{{n}} more bake to level up",
-    maxed: "Max level reached (Lv60)",
+    maxed: "Max level Lv60 · extra bake auto-converts to points (3:1)",
 
     taskDay: "Daily Tasks",
     taskWeek: "Weekly Tasks",
@@ -117,8 +121,10 @@
     exchangeFail: "Exchange failed, try again later",
     exchangeOk: "Exchange done, +{{bake}} bake",
     exchangeLevelUp: "Exchange done, +{{bake}} bake, now Lv{{level}}",
+    exchangeOverflow: "Exchange done, +{{bake}} bake; max level, overflow converted to {{points}} points",
     taskReach: "Do it {{n}} time(s) for {{bake}} bake",
     claimOk: "Task completed, +{{n}} bake",
+    claimOkOverflow: "Task completed, +{{n}} bake; max level, overflow converted to {{points}} points",
     claimFail: "Claim failed: {{reason}}. Today's bake limit may be used up.",
     taskPoints: "Bonus +{{n}} points (total {{total}})",
 

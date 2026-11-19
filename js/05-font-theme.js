@@ -186,6 +186,12 @@ function applyTheme() {
     try { window.WinterFX.sync(); } catch (err) { console.warn('[冬日雪境] 同步失败', err); }
   }
 
+  /* 【新增】20261119：绿野仙踪 / 春日花信 / 盛夏海岸 / 秋日私语雨效同步。
+     夏季由 RainFX 内部按概率决定是否触发雷阵雨。 */
+  if (window.RainFX && typeof window.RainFX.sync === 'function') {
+    try { window.RainFX.sync(); } catch (err) { console.warn('[雨效] 同步失败', err); }
+  }
+
   /* 【修改】20261118：过渡延长到 0.8s，定时器同步延后到 900ms，
      避免背景渐变还在补间时过渡类就被撤掉。 */
   if (animate) {
@@ -343,15 +349,18 @@ function handleFontUpload(files, type) {
     if (type === 'en') u.enFont = lastFont.id;
     else u.zhFont = lastFont.id;
 
-    if (store.set('bb-users', users)) {
+    /* 【修正】20261119：store.set 返回 Promise，原来写成 if (store.set(...))
+       永远为真，localStorage 配额失败时也会提示“上传成功”。
+       改为按 Promise 的成功/失败分支处理。 */
+    Promise.resolve(store.set('bb-users', users)).then(() => {
       applyFont(u.enFont, u.zhFont, u);
       renderFontLists(); 
       updatePreviewBoxes();
       showToast(_loadT('font.uploadSuccess', { count: newFonts.length }), '🎉');
-    } else {
+    }).catch(() => {
       u.customFonts = u.customFonts.filter(f => !newFonts.some(nf => nf.id === f.id));
       showToast(_loadT('font.storageFull'), '❌');
-    }
+    });
   }).catch(err => {
     showToast(_loadT('font.readFailed'), '❌');
   });

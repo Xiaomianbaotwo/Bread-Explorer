@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>面包 AI · Bread AI</title>
+  <meta name="description" content="面包 AI —— 多模型统一入口的基础框架预览。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23241c12'/%3E%3Ctext x='32' y='43' font-size='34' text-anchor='middle' fill='%23f0a04a'%3E✦%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="../css/01-vars.css">
+  <link rel="stylesheet" href="../css/06-fonts.css">
+  <link rel="stylesheet" href="./css/01-bread-ai.css">
+</head>
+<body class="bai-body">
+  <!-- 【修改】20261119：补回主站的漂浮 Emoji 层，子站不再只有光晕。 -->
+  <div id="breadBg" aria-hidden="true"></div>
+
+  <!-- 背景光晕：雨/雪画布由 21-rain.js / 18-winter.js 自动插入到 body -->
+  <div class="bai-bg" aria-hidden="true">
+    <span class="bai-orb bai-orb-a"></span>
+    <span class="bai-orb bai-orb-b"></span>
+    <span class="bai-orb bai-orb-c"></span>
+  </div>
+
+  <!-- ================= 门禁：主站账号 + 面包 Key + 密码 ================= -->
+  <div class="bai-gate" id="gate">
+    <section class="bai-gate-card" aria-labelledby="gateTitle">
+      <div class="bai-gate-brand">
+        <span class="bai-mark">✦</span>
+        <div>
+          <div class="bai-brand">面包 AI</div>
+          <div class="bai-brand-sub">Bread AI</div>
+        </div>
+      </div>
+
+      <span class="bai-pill">PREVIEW</span>
+      <h1 id="gateTitle" data-i18n="gate.title">进入面包 AI</h1>
+      <p class="bai-gate-desc" data-i18n="gate.desc">这里需要一个已经登录的面包账号，以及当前账号的面包 Key 和密码。</p>
+
+      <div class="bai-gate-guest" id="gateGuest" hidden>
+        <p data-i18n="gate.loginRequired">请先回主站登录面包账号，再回来进入面包 AI。</p>
+        <a class="bai-btn bai-btn-primary" href="../index.html" data-i18n="gate.loginBtn">回主站登录</a>
+      </div>
+
+      <form class="bai-gate-form" id="gateForm" hidden autocomplete="off">
+        <div class="bai-user-chip" id="gateUserChip">
+          <span class="bai-avatar" id="gateAvatarFallback">?</span>
+          <img class="bai-avatar" id="gateAvatar" alt="" hidden>
+          <div class="bai-user-meta">
+            <strong id="gateUserName">—</strong>
+            <span data-i18n="gate.loggedIn">已登录主站账号</span>
+          </div>
+        </div>
+
+        <label class="bai-field">
+          <span data-i18n="gate.keyLabel">面包 Key</span>
+          <input id="gateKey" type="text" inputmode="text" spellcheck="false" autocomplete="off"
+                 placeholder="bread-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                 data-i18n-placeholder="gate.keyPlaceholder">
+        </label>
+
+        <label class="bai-field">
+          <span data-i18n="gate.pwdLabel">密码</span>
+          <input id="gatePwd" type="password" autocomplete="current-password"
+                 placeholder="当前账号密码"
+                 data-i18n-placeholder="gate.pwdPlaceholder">
+        </label>
+
+        <p class="bai-error" id="gateError" role="alert"></p>
+
+        <button class="bai-btn bai-btn-primary bai-btn-wide" type="submit" data-i18n="gate.enter">进入面包 AI</button>
+        <p class="bai-hint" data-i18n="gate.hint">面包 Key 可在主站用户中心查看；本页不会保存 Key 或密码。</p>
+      </form>
+
+      <div class="bai-gate-foot">
+        <a href="../index.html" data-i18n="gate.back">← 返回面包浏览器</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= 主界面 ================= -->
+  <div class="bai-app" id="app" hidden>
+    <header class="bai-header">
+      <div class="bai-brand-lockup">
+        <span class="bai-mark">✦</span>
+        <div class="bai-brand">面包 AI</div>
+        <span class="bai-pill">PREVIEW</span>
+      </div>
+
+      <div class="bai-header-right">
+        <button class="bai-icon-btn" id="btnProviderConfig" type="button" data-i18n-title="header.configTitle">🧰</button>
+        <button class="bai-icon-btn" id="btnLang" type="button" title="切换语言 / Switch language">中 / EN</button>
+        <button class="bai-icon-btn" id="btnFont" type="button" data-i18n-title="header.fontTitle">Aa</button>
+        <button class="bai-icon-btn" id="btnTheme" type="button" data-i18n-title="header.themeTitle">◐</button>
+        <button class="bai-icon-btn" id="btnMode" type="button" data-i18n-title="header.modeTitle">☾</button>
+        <a class="bai-icon-btn" href="../index.html" id="btnBack" title="返回主站 / Back to main">⌂</a>
+      </div>
+    </header>
+
+    <main class="bai-main">
+      <aside class="bai-sidebar">
+        <div class="bai-side-title" data-i18n="sidebar.models">模型入口</div>
+        <div class="bai-provider-list" id="providerList"></div>
+        <div class="bai-side-note">
+          <span class="bai-dot"></span>
+          <span data-i18n="sidebar.status">19 家模型入口已登记 · 待配置后端</span>
+        </div>
+      </aside>
+
+      <!-- 【新增】20261119：模型入口右侧的历史对话栏。 -->
+      <aside class="bai-history" aria-labelledby="historyTitle">
+        <div class="bai-history-head">
+          <div>
+            <div class="bai-side-title" id="historyTitle" data-i18n="history.title">历史对话</div>
+            <p class="bai-history-sub" data-i18n="history.subtitle">本机暂存 · 登录后可同步云端</p>
+          </div>
+          <button class="bai-history-new" id="btnNewChat" type="button" data-i18n-title="history.newTitle">＋</button>
+        </div>
+        <div class="bai-history-list" id="historyList"></div>
+        <button class="bai-history-clear" id="btnClearHistory" type="button" data-i18n="history.clear">清空历史</button>
+      </aside>
+
+      <section class="bai-workspace">
+        <div class="bai-hero">
+          <span class="bai-eyebrow">BREAD AI · PREVIEW</span>
+          <!-- 【新增】20261119：把主站的时间问候搬过来；具体文案由 19-home-text.js 提供。 -->
+          <p class="bai-time-line" id="timeLine"></p>
+          <h1 data-i18n="hero.title">把问题，发酵成答案。</h1>
+          <p data-i18n="hero.desc">多模型统一入口，先从一个安静、清楚的工作台开始。</p>
+        </div>
+
+        <div class="bai-cap-grid">
+          <article class="bai-cap-card">
+            <span class="bai-cap-icon">◇</span>
+            <h3 data-i18n="hero.card1Title">多模型路由</h3>
+            <p data-i18n="hero.card1Desc">DeepSeek、Qwen、Zhipu GLM、Kimi、豆包、OpenAI、Claude 等 19 家模型入口已登记。</p>
+          </article>
+          <article class="bai-cap-card">
+            <span class="bai-cap-icon">✦</span>
+            <h3 data-i18n="hero.card2Title">主题与文案</h3>
+            <p data-i18n="hero.card2Desc">为面包浏览器生成主题说明、问候语和界面文案。</p>
+          </article>
+          <article class="bai-cap-card">
+            <span class="bai-cap-icon">⌁</span>
+            <h3 data-i18n="hero.card3Title">创作助手</h3>
+            <p data-i18n="hero.card3Desc">烟花、布局、活动页与子站内容的结构化建议。</p>
+          </article>
+        </div>
+
+        <div class="bai-chat-shell">
+          <div class="bai-chat-empty" id="chatEmpty">
+            <div class="bai-chat-orb">✦</div>
+            <h2 data-i18n="chat.emptyTitle">面包 AI 工作台</h2>
+            <p data-i18n="chat.emptyDesc">选择模型入口、配置厂商 Key 后即可开始对话；请求会先走 Supabase Edge，再按链路自动回退。</p>
+          </div>
+
+          <div class="bai-chat-messages" id="chatMessages" aria-live="polite"></div>
+
+          <div class="bai-composer">
+            <div class="bai-think-box">
+              <button class="bai-think-toggle" id="thinkingToggle" type="button" aria-pressed="false"
+                      data-i18n-title="reasoning.title">
+                <span class="bai-think-icon">◌</span>
+                <span data-i18n="reasoning.title">深度思考</span>
+                <span class="bai-think-state" id="thinkingState">关</span>
+              </button>
+              <select class="bai-think-level" id="thinkingLevel" hidden aria-label="思考强度"></select>
+            </div>
+            <textarea id="chatInput" rows="2"
+                      data-i18n-placeholder="chat.inputPlaceholder"
+                      placeholder="输入消息，Enter 发送，Shift + Enter 换行"></textarea>
+            <button class="bai-btn bai-btn-primary bai-send" id="chatSend" type="button" data-i18n="chat.send">发送</button>
+          </div>
+          <div class="bai-chat-note" data-i18n="chat.note">真实请求：浏览器 → Supabase Edge → Cloudflare Worker → 模型；长链路失败会自动回退到 Supabase Edge 直连模型。</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ================= 主题弹窗 ================= -->
+  <div class="bai-overlay" id="themeOverlay" hidden>
+    <section class="bai-modal bai-modal-wide" role="dialog" aria-modal="true" aria-labelledby="themeTitle">
+      <div class="bai-modal-head">
+        <div>
+          <h3 id="themeTitle" data-i18n="theme.title">主题</h3>
+          <p data-i18n="theme.desc">只保留面包原野、四季与蜂蜜工坊。</p>
+        </div>
+        <button class="bai-close" type="button" data-close="themeOverlay" aria-label="关闭">×</button>
+      </div>
+      <div class="bai-theme-grid" id="themeGrid"></div>
+      <p class="bai-modal-note" data-i18n="theme.note">雨 / 雪效果沿用主站规则：只在对应主题的 Plus、Max 或 Ultimate 档位生效。</p>
+    </section>
+  </div>
+
+  <!-- ================= 字体弹窗 ================= -->
+  <div class="bai-overlay" id="fontOverlay" hidden>
+    <section class="bai-modal" role="dialog" aria-modal="true" aria-labelledby="fontTitle">
+      <div class="bai-modal-head">
+        <div>
+          <h3 id="fontTitle" data-i18n="font.title">字体</h3>
+          <p data-i18n="font.desc">字体来自项目 assets/fonts 目录。</p>
+        </div>
+        <button class="bai-close" type="button" data-close="fontOverlay" aria-label="关闭">×</button>
+      </div>
+
+      <div class="bai-font-preview" id="fontPreview">面包 AI · Bread AI · 123</div>
+
+      <div class="bai-font-section">
+        <h4 data-i18n="font.zhTitle">中文字体</h4>
+        <div class="bai-font-list" id="fontZhList"></div>
+      </div>
+      <div class="bai-font-section">
+        <h4 data-i18n="font.enTitle">英文字体</h4>
+        <div class="bai-font-list" id="fontEnList"></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ================= 模型入口配置弹窗 ================= -->
+  <div class="bai-overlay" id="providerOverlay" hidden>
+    <section class="bai-modal" role="dialog" aria-modal="true" aria-labelledby="providerTitle">
+      <div class="bai-modal-head">
+        <div>
+          <h3 id="providerTitle">配置模型入口</h3>
+          <p id="providerSubtitle" data-i18n="providerConfig.subtitle">API Key 默认只保存在本次会话；不会上传到服务器。</p>
+        </div>
+        <button class="bai-close" type="button" data-close="providerOverlay" aria-label="关闭">×</button>
+      </div>
+
+      <div class="bai-config-form">
+        <label class="bai-field">
+          <span data-i18n="providerConfig.provider">服务商</span>
+          <select id="providerPicker"></select>
+        </label>
+
+        <label class="bai-field">
+          <span data-i18n="providerConfig.key">API Key</span>
+          <input id="providerKey" type="password" autocomplete="off" spellcheck="false"
+                 data-i18n-placeholder="providerConfig.keyPlaceholder"
+                 placeholder="粘贴该厂商的 API Key">
+        </label>
+
+        <label class="bai-check">
+          <input id="providerRememberKey" type="checkbox">
+          <span data-i18n="providerConfig.rememberKey">记住 Key（仅本机）</span>
+        </label>
+        <p class="bai-field-note" data-i18n="providerConfig.keyNote">默认只存到本次会话；勾选后会写入本机浏览器，公共电脑不要勾选。</p>
+
+        <label class="bai-field">
+          <span data-i18n="providerConfig.model">模型 ID</span>
+          <!-- 【修改】20261119：改成真正的模型下拉框；最后一项可选“自定义模型”。 -->
+          <select id="providerModel"></select>
+          <input id="providerModelCustom" type="text" autocomplete="off" spellcheck="false" hidden
+                 data-i18n-placeholder="providerConfig.customModelPlaceholder"
+                 placeholder="输入自定义模型 ID">
+        </label>
+        <p class="bai-field-note" id="providerModelListNote"></p>
+
+        <div class="bai-config-row">
+          <label class="bai-field">
+            <span data-i18n="providerConfig.context">上下文长度</span>
+            <input id="providerContext" type="number" min="0" step="1"
+                   data-i18n-placeholder="providerConfig.contextPlaceholder"
+                   placeholder="例如 1048576">
+          </label>
+          <label class="bai-field">
+            <span data-i18n="providerConfig.maxTokens">最大输出 Token</span>
+            <input id="providerMaxTokens" type="number" min="0" step="1"
+                   data-i18n-placeholder="providerConfig.maxTokensPlaceholder"
+                   placeholder="例如 131072">
+          </label>
+        </div>
+        <p class="bai-field-note" data-i18n="providerConfig.limitNote">上下文和输出上限按模型实际能力填写；不确定可以留空。</p>
+
+        <div class="bai-config-reasoning" id="providerReasoningGroup">
+          <div class="bai-config-reasoning-head">
+            <span data-i18n="reasoning.title">深度思考</span>
+            <label class="bai-switch">
+              <input id="providerReasoningEnabled" type="checkbox">
+              <span class="bai-switch-track"><span class="bai-switch-dot"></span></span>
+            </label>
+          </div>
+          <label class="bai-field">
+            <span data-i18n="reasoning.level">思考强度</span>
+            <select id="providerReasoningLevel"></select>
+          </label>
+          <p class="bai-field-note" id="providerReasoningNote"></p>
+        </div>
+
+        <p class="bai-config-error" id="providerConfigError"></p>
+
+        <div class="bai-modal-actions">
+          <button class="bai-btn" id="providerClear" type="button" data-i18n="providerConfig.clear">清除配置</button>
+          <button class="bai-btn bai-btn-primary" id="providerSave" type="button" data-i18n="providerConfig.save">保存配置</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="bai-toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- 先加载基础桥接，再加载主站雨/雪模块；05-init 负责启动 -->
+  <script src="../js/19-home-text.js"></script>
+  <script src="./js/01-core.js"></script>
+  <script>
+    /* 音频在子站目录下，显式把路径指回项目根 assets/audio，避免相对路径失效。 */
+    window.__BB_RAIN_THUNDER_SRC__ = '../assets/audio/thunder.mp3?v=20261119-thunder1';
+    window.__BB_RAIN_AUDIO_SRC__ = '../assets/audio/rain-loop.mp3?v=20261119-rain1';
+    /* 烟花模块用到的运行标记；子站没有角色扮演播放器，固定为 false。 */
+    window.isRpPlaying = false;
+  </script>
+  <!-- 【新增】20261119：把主站烟花引擎接回子站，Base 档位本身不会发射，Plus 起才放。 -->
+  <script src="../js/12-fireworks.js"></script>
+  <script src="../js/21-rain.js"></script>
+  <script src="../js/18-winter.js"></script>
+  <script src="./js/05-init.js"></script>
+</body>
+</html>

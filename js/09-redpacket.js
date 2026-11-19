@@ -296,11 +296,43 @@ function endRedPacketRain() {
   } else {
     const active = u.vipExpire > Date.now();
     const start = (active && u.vipType === (vLevel === 2 ? 'svip' : 'vip')) ? u.vipExpire : Date.now();
+    const oldVipType = u.vipType;
+    const oldVipExpire = u.vipExpire;
     
     u.vipType = vLevel === 2 ? 'svip' : 'vip';
     u.vipExpire = start + (vDays * 86400000);
     
+    /* 【修改】20261119 P4：红包 VIP 不再由 store.set 直写 vip_type / vip_expire。
+       本地先乐观展示，随后由 apply_redpacket_vip 落库；服务端拒绝时回滚。 */
     store.set('bb-users', users);
+    if (typeof window.__bbApplyRedpacketVipRpc === 'function') {
+      Promise.resolve(window.__bbApplyRedpacketVipRpc(u, vLevel, vDays)).then(d => {
+        if (d && d.ok) {
+          u.vipType = d.type || u.vipType;
+          u.vipExpire = Number(d.expire) || 0;
+          const nowUsers = getUsersDB();
+          const nowU = nowUsers[currentUser];
+          if (nowU) {
+            nowU.vipType = u.vipType;
+            nowU.vipExpire = u.vipExpire;
+          }
+          store.set('bb-users', nowUsers);
+          loadUserData();
+        } else if (d && d.business) {
+          u.vipType = oldVipType;
+          u.vipExpire = oldVipExpire;
+          const nowUsers = getUsersDB();
+          const nowU = nowUsers[currentUser];
+          if (nowU) {
+            nowU.vipType = oldVipType;
+            nowU.vipExpire = oldVipExpire;
+          }
+          store.set('bb-users', nowUsers);
+          loadUserData();
+          if (typeof showToast === 'function') showToast(_t('settleFailed', '红包 VIP 领取失败，请稍后再试'), '❌');
+        }
+      }).catch(() => { /* 网络失败保留本地值，下一次同步以云端为准 */ });
+    }
     loadUserData();
 
     const typeStr = vLevel === 2 ? '👑 SVIP' : '💎 VIP';

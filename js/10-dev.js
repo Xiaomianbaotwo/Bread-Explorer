@@ -5,15 +5,19 @@
 
 window.isDevMode = false; 
 window.isAutoRainEnabled = false; 
-const DEV_UUID = 'b53b3bc6-6126-42a5-8f9c-c80f93196d58';
+const DEV_UUID_LIST = [
+  'b53b3bc6-6126-42a5-8f9c-c80f93196d58', // 你自己
+  '好友的uuid放这里'
+];
 
 function closeDevPanel() {
   window.isDevMode = false;
-  window.isAutoRainEnabled = false; 
+  window.isAutoRainEnabled = false;
   const btn = $('#btnDevAutoRain');
   if (btn) {
-    btn.style.color = '#9b59b6'; btn.style.background = 'transparent';
-    btn.textContent = _loadT('dev.autoRainBtnOff', '🤖 自动领取红包(0.7秒)');
+    btn.style.background = 'transparent';
+    btn.style.color = '#9b59b6';
+    btn.textContent = _load('dev.autoRainBtnOff', '🤖自动领取红包(0.7秒)');
   }
   $('#devPanel').classList.remove('show');
 }
@@ -22,17 +26,22 @@ document.addEventListener('keydown', async (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
   if (currentUser && e.key.toLowerCase() === 'k') {
     if (window.isDevMode) {
-      window.isDevMode = false; $('#devPanel').classList.remove('show');
+      window.isDevMode = false;
+      $('#devPanel').classList.remove('show');
       return showToast(_loadT('dev.devOff', '开发者模式已关闭'), '🔒');
     }
     try {
-      showToast(_loadT('dev.verifyingIdentity', '正在向云端验证身份...'), '⏳');
+      showToast(_loadT('dev.verifyingIdentity', '正在向云端验证身份…'), '🔍');
       const { data: { user }, error } = await sb.auth.getUser();
-      if (error || !user) return showToast(_loadT('dev.verifyFailNotLogged', '验证失败：未登录'), '❌');
-      if (user.id === DEV_UUID) {
-        window.isDevMode = true; $('#devPanel').classList.add('show');
+      if (error || !user) return showToast(_loadT('dev.verifyFailNotLogged', '验证失败: 未登录'), '❌');
+      // ✅ 这里改成数组包含判断
+      if (DEV_UUID_LIST.includes(user.id)) {
+        window.isDevMode = true;
+        $('#devPanel').classList.add('show');
         showToast(_loadT('dev.verifySuccess', '身份验证通过，欢迎主理人！'), '👑');
-      } else { showToast(_loadT('dev.accessDenied', '拒绝访问：无管理员权限'), '🚫'); }
+      } else {
+        showToast(_loadT('dev.accessDenied', '拒绝访问: 无管理员权限'), '🚫');
+      }
     } catch (err) { showToast(_loadT('dev.requestFail', '请求失败，检查网络'), '❌'); }
   }
 });
